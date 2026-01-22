@@ -1,45 +1,21 @@
 {
-    "$schema": "https://openapi.vercel.sh/vercel.json",
     "version": 2,
-    "name": "sunoship",
-    "public": true,
-    "headers": [
+    "buildCommand": "",
+    "outputDirectory": ".",
+    "routes": [
         {
-            "source": "/(.*)",
-            "headers": [
-                {
-                    "key": "X-Content-Type-Options",
-                    "value": "nosniff"
-                },
-                {
-                    "key": "X-Frame-Options",
-                    "value": "DENY"
-                },
-                {
-                    "key": "X-XSS-Protection",
-                    "value": "1; mode=block"
-                }
-            ]
+            "src": "/sw.js",
+            "headers": {
+                "Cache-Control": "no-cache",
+                "Service-Worker-Allowed": "/"
+            }
         },
         {
-            "source": "/sw.js",
-            "headers": [
-                {
-                    "key": "Cache-Control",
-                    "value": "no-cache"
-                },
-                {
-                    "key": "Service-Worker-Allowed",
-                    "value": "/"
-                }
-            ]
-        }
-    ],
-    "rewrites": [
+            "handle": "filesystem"
+        },
         {
-            "source": "/((?!api/).*)",
-            "destination": "/index.html"
+            "src": "/(.*)",
+            "dest": "/index.html"
         }
-    ],
-    "trailingSlash": false
+    ]
 }
