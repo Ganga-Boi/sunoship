@@ -900,33 +900,51 @@ function getTempoDescription(bpm) {
 
 // BPM Detection using peak detection algorithm
 async function detectBPM(audioBuffer) {
-    return new Promise((resolve) => {
+    try {
         const channelData = audioBuffer.getChannelData(0);
         const sampleRate = audioBuffer.sampleRate;
+        const duration = audioBuffer.duration;
         
-        // Downsample for faster processing
-        const downsampleFactor = 4;
-        const downsampled = [];
-        for (let i = 0; i < channelData.length; i += downsampleFactor) {
-            downsampled.push(Math.abs(channelData[i]));
+        // Limit analysis to 30 seconds max (from middle of track)
+        const maxSamples = Math.min(channelData.length, sampleRate * 30);
+        const startOffset = Math.floor((channelData.length - maxSamples) / 2);
+        
+        // Downsample significantly for faster processing
+        const downsampleFactor = Math.max(1, Math.floor(sampleRate / 4000)); // Target ~4kHz
+        const samples = [];
+        
+        for (let i = 0; i < maxSamples; i += downsampleFactor) {
+            samples.push(Math.abs(channelData[startOffset + i]));
         }
         
-        // Apply low-pass filter (simple moving average)
-        const windowSize = Math.floor(sampleRate / downsampleFactor / 10);
+        const effectiveSampleRate = sampleRate / downsampleFactor;
+        
+        // Simple low-pass filter using moving average
+        const windowSize = Math.floor(effectiveSampleRate / 20); // 50ms window
         const filtered = [];
-        for (let i = 0; i < downsampled.length; i++) {
+        
+        for (let i = 0; i < samples.length; i++) {
             let sum = 0;
             let count = 0;
-            for (let j = Math.max(0, i - windowSize); j < Math.min(downsampled.length, i + windowSize); j++) {
-                sum += downsampled[j];
+            const start = Math.max(0, i - windowSize);
+            const end = Math.min(samples.length, i + windowSize);
+            
+            for (let j = start; j < end; j++) {
+                sum += samples[j];
                 count++;
             }
             filtered.push(sum / count);
         }
         
-        // Find peaks
-        const threshold = Math.max(...filtered) * 0.5;
-        const minPeakDistance = Math.floor(sampleRate / downsampleFactor * 0.3); // Min 0.3s between peaks
+        // Find threshold for peaks
+        let maxVal = 0;
+        for (let i = 0; i < filtered.length; i++) {
+            if (filtered[i] > maxVal) maxVal = filtered[i];
+        }
+        const threshold = maxVal * 0.4;
+        
+        // Detect peaks with minimum distance
+        const minPeakDistance = Math.floor(effectiveSampleRate * 0.25); // Min 0.25s between beats
         const peaks = [];
         
         for (let i = 1; i < filtered.length - 1; i++) {
@@ -939,140 +957,122 @@ async function detectBPM(audioBuffer) {
             }
         }
         
-        // Calculate intervals between peaks
+        if (peaks.length < 4) {
+            // Fallback to energy-based detection
+            return detectBPMEnergy(samples, effectiveSampleRate);
+        }
+        
+        // Calculate intervals
         const intervals = [];
         for (let i = 1; i < peaks.length; i++) {
             intervals.push(peaks[i] - peaks[i - 1]);
         }
         
-        if (intervals.length < 4) {
-            // Fallback: use autocorrelation
-            resolve(detectBPMAutocorrelation(channelData, sampleRate));
-            return;
-        }
-        
-        // Find most common interval (histogram approach)
-        const histogram = {};
-        const tolerance = Math.floor(minPeakDistance / 10);
-        
-        intervals.forEach(interval => {
-            const bucket = Math.round(interval / tolerance) * tolerance;
-            histogram[bucket] = (histogram[bucket] || 0) + 1;
-        });
-        
-        // Find dominant interval
-        let maxCount = 0;
-        let dominantInterval = intervals[0];
-        for (const [interval, count] of Object.entries(histogram)) {
-            if (count > maxCount) {
-                maxCount = count;
-                dominantInterval = parseInt(interval);
-            }
-        }
+        // Find median interval (more robust than mean)
+        intervals.sort((a, b) => a - b);
+        const medianInterval = intervals[Math.floor(intervals.length / 2)];
         
         // Convert to BPM
-        const secondsPerBeat = (dominantInterval * downsampleFactor) / sampleRate;
+        const secondsPerBeat = medianInterval / effectiveSampleRate;
         let bpm = Math.round(60 / secondsPerBeat);
         
-        // Normalize to reasonable range (60-180 BPM)
+        // Normalize to 60-180 range
         while (bpm < 60) bpm *= 2;
         while (bpm > 180) bpm /= 2;
         
-        resolve(bpm);
-    });
+        return bpm;
+        
+    } catch (error) {
+        console.error('BPM detection error:', error);
+        return 120; // Default fallback
+    }
 }
 
-// Fallback BPM detection using autocorrelation
-function detectBPMAutocorrelation(channelData, sampleRate) {
-    // Use a portion of the audio (middle 10 seconds or less)
-    const duration = channelData.length / sampleRate;
-    const startSample = Math.floor(Math.max(0, (duration / 2 - 5)) * sampleRate);
-    const endSample = Math.min(channelData.length, startSample + 10 * sampleRate);
-    const samples = channelData.slice(startSample, endSample);
-    
-    // Downsample heavily for autocorrelation
-    const factor = 16;
-    const downsampled = [];
-    for (let i = 0; i < samples.length; i += factor) {
-        downsampled.push(samples[i]);
-    }
-    
-    const effectiveSampleRate = sampleRate / factor;
-    
-    // Calculate autocorrelation for different lag values
-    // BPM range 60-180 corresponds to periods of 1.0s to 0.33s
-    const minLag = Math.floor(effectiveSampleRate * 0.33);
-    const maxLag = Math.floor(effectiveSampleRate * 1.0);
-    
-    let maxCorrelation = 0;
-    let bestLag = minLag;
-    
-    for (let lag = minLag; lag <= maxLag; lag++) {
-        let correlation = 0;
-        for (let i = 0; i < downsampled.length - lag; i++) {
-            correlation += downsampled[i] * downsampled[i + lag];
+// Energy-based BPM detection fallback
+function detectBPMEnergy(samples, sampleRate) {
+    try {
+        // Calculate energy in windows
+        const windowSize = Math.floor(sampleRate * 0.05); // 50ms windows
+        const energies = [];
+        
+        for (let i = 0; i < samples.length - windowSize; i += windowSize) {
+            let energy = 0;
+            for (let j = 0; j < windowSize; j++) {
+                energy += samples[i + j] * samples[i + j];
+            }
+            energies.push(energy);
         }
-        if (correlation > maxCorrelation) {
-            maxCorrelation = correlation;
-            bestLag = lag;
+        
+        // Find peaks in energy
+        const avgEnergy = energies.reduce((a, b) => a + b, 0) / energies.length;
+        let beatCount = 0;
+        let wasAbove = false;
+        
+        for (let i = 0; i < energies.length; i++) {
+            const isAbove = energies[i] > avgEnergy * 1.2;
+            if (isAbove && !wasAbove) {
+                beatCount++;
+            }
+            wasAbove = isAbove;
         }
+        
+        // Calculate BPM from beat count
+        const durationSeconds = samples.length / sampleRate;
+        let bpm = Math.round((beatCount / durationSeconds) * 60);
+        
+        // Normalize
+        while (bpm < 60) bpm *= 2;
+        while (bpm > 180) bpm /= 2;
+        
+        return bpm || 120;
+        
+    } catch (error) {
+        return 120;
     }
-    
-    const bpm = Math.round(60 / (bestLag / effectiveSampleRate));
-    return Math.max(60, Math.min(180, bpm));
 }
 
 // Loudness (LUFS) calculation
 async function calculateLUFS(audioBuffer) {
-    return new Promise((resolve) => {
-        const channelData = [];
-        for (let i = 0; i < audioBuffer.numberOfChannels; i++) {
-            channelData.push(audioBuffer.getChannelData(i));
-        }
-        
+    try {
         const sampleRate = audioBuffer.sampleRate;
-        const numSamples = channelData[0].length;
+        const numChannels = audioBuffer.numberOfChannels;
+        const totalSamples = audioBuffer.length;
         
-        // K-weighting filter coefficients (simplified)
-        // Full ITU-R BS.1770 would require proper shelf filters
-        // This is a reasonable approximation
+        // Limit to 60 seconds max for analysis
+        const maxSamples = Math.min(totalSamples, sampleRate * 60);
+        const startOffset = Math.floor((totalSamples - maxSamples) / 2);
         
-        // Calculate mean square for each channel
         let totalMeanSquare = 0;
         
-        for (let ch = 0; ch < channelData.length; ch++) {
-            const samples = channelData[ch];
+        for (let ch = 0; ch < numChannels; ch++) {
+            const channelData = audioBuffer.getChannelData(ch);
             let sumSquares = 0;
-            
-            // Apply simplified K-weighting (high-shelf boost + high-pass)
-            // For simplicity, we'll use the raw samples with a gentle high-frequency emphasis
             let prevSample = 0;
-            for (let i = 0; i < numSamples; i++) {
-                // Simple high-pass to remove DC and sub-bass
-                const filtered = samples[i] - 0.995 * prevSample;
-                prevSample = samples[i];
+            
+            // Process in chunks to avoid stack issues
+            for (let i = startOffset; i < startOffset + maxSamples; i++) {
+                // Simple high-pass filter
+                const filtered = channelData[i] - 0.995 * prevSample;
+                prevSample = channelData[i];
                 
-                // High-frequency emphasis (simple 1st order shelf approximation)
-                const weighted = filtered * (1 + 0.2 * Math.sign(filtered) * Math.min(Math.abs(filtered), 0.5));
-                
-                sumSquares += weighted * weighted;
+                sumSquares += filtered * filtered;
             }
             
-            const meanSquare = sumSquares / numSamples;
-            
-            // Channel weighting (L, R = 1.0; surround would be different)
-            totalMeanSquare += meanSquare;
+            totalMeanSquare += sumSquares / maxSamples;
         }
         
         // Average across channels
-        totalMeanSquare /= channelData.length;
+        totalMeanSquare /= numChannels;
         
         // Convert to LUFS
-        // LUFS = -0.691 + 10 * log10(mean_square)
         const lufs = -0.691 + 10 * Math.log10(Math.max(totalMeanSquare, 1e-10));
         
-        resolve(Math.round(lufs * 10) / 10);
-    });
+        return Math.round(lufs * 10) / 10;
+        
+    } catch (error) {
+        console.error('LUFS calculation error:', error);
+        return -14; // Default fallback
+    }
 }
 
 // =====================================================
