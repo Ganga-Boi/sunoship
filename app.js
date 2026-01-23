@@ -385,8 +385,8 @@ function initMetadataForm() {
             updateAnalysisUI(track);
         } else if (track) {
             resetAnalysisUI();
-            elements.bpmStatus.textContent = 'Ikke analyseret';
-            elements.lufsStatus.textContent = 'Ikke analyseret';
+            if (elements.bpmStatus) elements.bpmStatus.textContent = 'Ikke analyseret';
+            if (elements.lufsStatus) elements.lufsStatus.textContent = 'Ikke analyseret';
             document.querySelector('.bpm-card')?.classList.remove('analyzing');
             document.querySelector('.loudness-card')?.classList.remove('analyzing');
         }
@@ -929,7 +929,8 @@ async function processEnhancement() {
     if (!track) return;
     
     // Show progress
-    elements.enhanceProgress?.classList.remove('hidden');
+    const progressEl = document.getElementById('enhanceProgress');
+    if (progressEl) progressEl.classList.remove('hidden');
     updateProgress(0, 'Forbereder...');
     
     try {
@@ -998,7 +999,7 @@ async function processEnhancement() {
             }
         }
         
-        updateProgress(50, 'Anvender stereo widening...');
+        updateProgress(50, 'Renderer audio...');
         
         // Connect to destination
         currentNode.connect(offlineCtx.destination);
@@ -1024,15 +1025,8 @@ async function processEnhancement() {
         
         updateProgress(85, 'Eksporterer...');
         
-        // Convert to WAV or MP3
-        let blob;
-        if (state.exportFormat === 'wav') {
-            blob = audioBufferToWav(processedBuffer);
-        } else {
-            // For MP3, we'll export as WAV (MP3 encoding requires external library)
-            blob = audioBufferToWav(processedBuffer);
-            showToast('MP3 encoding kræver ekstra bibliotek - eksporterer som WAV', 'warning');
-        }
+        // Convert to WAV
+        const blob = audioBufferToWav(processedBuffer);
         
         state.enhancedBlob = blob;
         
@@ -1045,38 +1039,36 @@ async function processEnhancement() {
         
         updateProgress(100, 'Færdig!');
         
-        // Update UI
-        document.getElementById('afterLufs').textContent = newLufs.toFixed(1);
-        document.getElementById('afterPeak').textContent = `${state.enhanceSettings.limiter.ceiling} dB`;
-        document.getElementById('afterStereo').textContent = state.enhanceSettings.stereo.enabled ? 'Wide' : 'Normal';
+        // Update UI - with null checks
+        const afterLufs = document.getElementById('afterLufs');
+        if (afterLufs) afterLufs.textContent = newLufs.toFixed(1);
         
-        document.getElementById('playAfter').disabled = false;
-        document.getElementById('continueToMetadata').disabled = false;
+        const playAfter = document.getElementById('playAfter');
+        if (playAfter) playAfter.disabled = false;
         
         showToast('Audio enhancement færdig! 🎉', 'success');
         
         // Hide progress after delay
         setTimeout(() => {
-            elements.enhanceProgress?.classList.add('hidden');
+            if (progressEl) progressEl.classList.add('hidden');
         }, 2000);
         
     } catch (error) {
         console.error('Enhancement error:', error);
         showToast('Fejl under enhancement: ' + error.message, 'error');
-        elements.enhanceProgress?.classList.add('hidden');
+        const progressEl = document.getElementById('enhanceProgress');
+        if (progressEl) progressEl.classList.add('hidden');
     }
 }
 
 function updateProgress(percent, text) {
-    if (elements.enhanceProgressBar) {
-        elements.enhanceProgressBar.style.width = `${percent}%`;
-    }
-    if (elements.progressPercent) {
-        elements.progressPercent.textContent = `${percent}%`;
-    }
-    if (elements.progressText) {
-        elements.progressText.textContent = text;
-    }
+    const progressBar = document.getElementById('enhanceProgressBar');
+    const progressPercent = document.getElementById('progressPercent');
+    const progressText = document.getElementById('progressText');
+    
+    if (progressBar) progressBar.style.width = `${percent}%`;
+    if (progressPercent) progressPercent.textContent = `${percent}%`;
+    if (progressText) progressText.textContent = text;
 }
 
 async function applyLoudnessAndLimiter(audioBuffer) {
@@ -1290,22 +1282,26 @@ async function analyzeTrack(track) {
         
         // Mark as analyzed but with no data
         track.analyzed = true;
-        elements.bpmStatus.textContent = 'Fejl';
-        elements.lufsStatus.textContent = 'Fejl';
+        if (elements.bpmStatus) elements.bpmStatus.textContent = 'Fejl';
+        if (elements.lufsStatus) elements.lufsStatus.textContent = 'Fejl';
         document.querySelector('.bpm-card')?.classList.remove('analyzing');
         document.querySelector('.loudness-card')?.classList.remove('analyzing');
     }
 }
 
 function resetAnalysisUI() {
-    elements.bpmValue.textContent = '--';
-    elements.lufsValue.textContent = '--';
-    elements.bpmStatus.textContent = 'Analyserer...';
-    elements.bpmStatus.className = 'analysis-status';
-    elements.lufsStatus.textContent = 'Analyserer...';
-    elements.lufsStatus.className = 'analysis-status';
-    elements.loudnessMeterFill.style.width = '0%';
-    elements.distributionBadge.classList.remove('visible', 'warning');
+    if (elements.bpmValue) elements.bpmValue.textContent = '--';
+    if (elements.lufsValue) elements.lufsValue.textContent = '--';
+    if (elements.bpmStatus) {
+        elements.bpmStatus.textContent = 'Analyserer...';
+        elements.bpmStatus.className = 'analysis-status';
+    }
+    if (elements.lufsStatus) {
+        elements.lufsStatus.textContent = 'Analyserer...';
+        elements.lufsStatus.className = 'analysis-status';
+    }
+    if (elements.loudnessMeterFill) elements.loudnessMeterFill.style.width = '0%';
+    if (elements.distributionBadge) elements.distributionBadge.classList.remove('visible', 'warning');
     
     // Add analyzing class
     document.querySelector('.bpm-card')?.classList.add('analyzing');
@@ -1314,42 +1310,52 @@ function resetAnalysisUI() {
 
 function updateAnalysisUI(track) {
     // BPM
-    elements.bpmValue.textContent = track.bpm || '--';
-    elements.bpmStatus.textContent = track.bpm ? getTempoDescription(track.bpm) : 'Ukendt';
-    elements.bpmStatus.className = 'analysis-status success';
+    if (elements.bpmValue) elements.bpmValue.textContent = track.bpm || '--';
+    if (elements.bpmStatus) {
+        elements.bpmStatus.textContent = track.bpm ? getTempoDescription(track.bpm) : 'Ukendt';
+        elements.bpmStatus.className = 'analysis-status success';
+    }
     document.querySelector('.bpm-card')?.classList.remove('analyzing');
     document.querySelector('.bpm-card')?.classList.add('complete');
     
     // LUFS
-    if (track.lufs !== null) {
+    if (track.lufs !== null && elements.lufsValue) {
         elements.lufsValue.textContent = track.lufs.toFixed(1);
         
         // Determine status
         const isGood = track.lufs >= -15 && track.lufs <= -13;
         const isAcceptable = track.lufs >= -17 && track.lufs <= -11;
         
-        if (isGood) {
-            elements.lufsStatus.textContent = 'Perfekt til streaming';
-            elements.lufsStatus.className = 'analysis-status success';
-            elements.distributionBadge.classList.add('visible');
-            elements.distributionBadge.classList.remove('warning');
-        } else if (isAcceptable) {
-            elements.lufsStatus.textContent = 'Acceptabelt';
-            elements.lufsStatus.className = 'analysis-status warning';
-            elements.distributionBadge.classList.add('visible', 'warning');
-            elements.distributionBadge.querySelector('svg').style.display = 'none';
-            elements.distributionBadge.textContent = 'Kan forbedres';
-        } else if (track.lufs > -11) {
-            elements.lufsStatus.textContent = 'For højt! Vil blive normaliseret';
-            elements.lufsStatus.className = 'analysis-status warning';
-        } else {
-            elements.lufsStatus.textContent = 'Meget lavt niveau';
-            elements.lufsStatus.className = 'analysis-status warning';
+        if (elements.lufsStatus) {
+            if (isGood) {
+                elements.lufsStatus.textContent = 'Perfekt til streaming';
+                elements.lufsStatus.className = 'analysis-status success';
+            } else if (isAcceptable) {
+                elements.lufsStatus.textContent = 'Acceptabelt';
+                elements.lufsStatus.className = 'analysis-status warning';
+            } else if (track.lufs > -11) {
+                elements.lufsStatus.textContent = 'For højt! Vil blive normaliseret';
+                elements.lufsStatus.className = 'analysis-status warning';
+            } else {
+                elements.lufsStatus.textContent = 'Meget lavt niveau';
+                elements.lufsStatus.className = 'analysis-status warning';
+            }
+        }
+        
+        if (elements.distributionBadge) {
+            if (isGood) {
+                elements.distributionBadge.classList.add('visible');
+                elements.distributionBadge.classList.remove('warning');
+            } else if (isAcceptable) {
+                elements.distributionBadge.classList.add('visible', 'warning');
+            }
         }
         
         // Update meter (scale: -24 to -3 LUFS)
-        const meterPercent = Math.max(0, Math.min(100, ((track.lufs + 24) / 21) * 100));
-        elements.loudnessMeterFill.style.width = `${meterPercent}%`;
+        if (elements.loudnessMeterFill) {
+            const meterPercent = Math.max(0, Math.min(100, ((track.lufs + 24) / 21) * 100));
+            elements.loudnessMeterFill.style.width = `${meterPercent}%`;
+        }
     }
     
     document.querySelector('.loudness-card')?.classList.remove('analyzing');

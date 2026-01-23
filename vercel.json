@@ -1,21 +1,19 @@
 {
-    "version": 2,
-    "buildCommand": "",
-    "outputDirectory": ".",
-    "routes": [
-        {
-            "src": "/sw.js",
-            "headers": {
-                "Cache-Control": "no-cache",
-                "Service-Worker-Allowed": "/"
-            }
-        },
-        {
-            "handle": "filesystem"
-        },
-        {
-            "src": "/(.*)",
-            "dest": "/index.html"
-        }
-    ]
+  "version": 2,
+  "buildCommand": "",
+  "outputDirectory": ".",
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" },
+        { "key": "Pragma", "value": "no-cache" },
+        { "key": "Expires", "value": "0" }
+      ]
+    }
+  ],
+  "routes": [
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
 }
