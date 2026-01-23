@@ -1,679 +1,133 @@
 <!DOCTYPE html>
 <html lang="da">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SunoShip - Musik Distribution Prep</title>
-    <link rel="stylesheet" href="style.css?v=222">
-    <link rel="manifest" href="manifest.json">
-    <link rel="icon" href="icon.svg" type="image/svg+xml">
-    <meta name="theme-color" content="#0d1117">
-    <meta name="description" content="Forbered dine Suno.ai tracks til distribution på Spotify, Apple Music og mere">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SunoShip</title>
+
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="/style.css" />
 </head>
+
 <body>
-    <!-- SPLASH SCREEN -->
-    <div id="splash" class="splash">
-        <div class="splash-content">
-            <div class="logo-container">
-                <svg class="logo-icon" viewBox="0 0 100 100" fill="none">
-                    <!-- Ship hull -->
-                    <path class="hull" d="M15 70 Q50 85 85 70 L80 55 Q50 65 20 55 Z" fill="url(#shipGradient)"/>
-                    <!-- Sail/Wave forms -->
-                    <path class="sail sail-1" d="M50 15 Q65 35 50 55 Q35 35 50 15" fill="url(#accentGradient)" opacity="0.9"/>
-                    <path class="sail sail-2" d="M35 25 Q45 40 35 55 Q25 40 35 25" fill="#1DB954" opacity="0.7"/>
-                    <path class="sail sail-3" d="M65 25 Q75 40 65 55 Q55 40 65 25" fill="#1DB954" opacity="0.7"/>
-                    <!-- Sound waves -->
-                    <g class="sound-waves">
-                        <path d="M20 45 Q15 50 20 55" stroke="#1DB954" stroke-width="2" fill="none" opacity="0.5"/>
-                        <path d="M15 42 Q8 50 15 58" stroke="#1DB954" stroke-width="2" fill="none" opacity="0.3"/>
-                        <path d="M80 45 Q85 50 80 55" stroke="#1DB954" stroke-width="2" fill="none" opacity="0.5"/>
-                        <path d="M85 42 Q92 50 85 58" stroke="#1DB954" stroke-width="2" fill="none" opacity="0.3"/>
-                    </g>
-                    <defs>
-                        <linearGradient id="shipGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                            <stop offset="0%" stop-color="#667eea"/>
-                            <stop offset="100%" stop-color="#764ba2"/>
-                        </linearGradient>
-                        <linearGradient id="accentGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                            <stop offset="0%" stop-color="#1DB954"/>
-                            <stop offset="100%" stop-color="#667eea"/>
-                        </linearGradient>
-                    </defs>
-                </svg>
-                <h1 class="logo-text">
-                    <span class="suno">Suno</span><span class="ship">Ship</span>
-                </h1>
-            </div>
-            <p class="tagline">Ship din musik til verden</p>
-            <div class="loading-bar">
-                <div class="loading-progress"></div>
-            </div>
-        </div>
+  <!-- Splash -->
+  <div id="splash" class="splash">
+    <div class="splash-content">
+      <img src="/icon.svg" class="logo-icon" alt="SunoShip" />
+      <h1 class="logo-text"><span class="suno">Suno</span><span class="ship">Ship</span></h1>
+      <p class="tagline">Prepare AI music for release</p>
+      <div class="loading-bar">
+        <div class="loading-progress"></div>
+      </div>
     </div>
+  </div>
 
-    <!-- MAIN APP -->
-    <main id="app" class="app hidden">
-        <!-- Header -->
-        <header class="header">
-            <div class="header-logo">
-                <svg class="header-icon" viewBox="0 0 100 100" fill="none">
-                    <path d="M15 70 Q50 85 85 70 L80 55 Q50 65 20 55 Z" fill="url(#headerShipGradient)"/>
-                    <path d="M50 15 Q65 35 50 55 Q35 35 50 15" fill="url(#headerAccentGradient)" opacity="0.9"/>
-                    <defs>
-                        <linearGradient id="headerShipGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                            <stop offset="0%" stop-color="#667eea"/>
-                            <stop offset="100%" stop-color="#764ba2"/>
-                        </linearGradient>
-                        <linearGradient id="headerAccentGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                            <stop offset="0%" stop-color="#1DB954"/>
-                            <stop offset="100%" stop-color="#667eea"/>
-                        </linearGradient>
-                    </defs>
-                </svg>
-                <span class="header-title">SunoShip</span>
-            </div>
-            <nav class="header-nav">
-                <button class="nav-btn active" data-step="upload">
-                    <span class="nav-num">1</span>
-                    <span class="nav-label">Upload</span>
-                </button>
-                <button class="nav-btn" data-step="enhance" disabled>
-                    <span class="nav-num">2</span>
-                    <span class="nav-label">Enhance</span>
-                </button>
-                <button class="nav-btn" data-step="metadata" disabled>
-                    <span class="nav-num">3</span>
-                    <span class="nav-label">Metadata</span>
-                </button>
-                <button class="nav-btn" data-step="artwork" disabled>
-                    <span class="nav-num">4</span>
-                    <span class="nav-label">Artwork</span>
-                </button>
-                <button class="nav-btn" data-step="export" disabled>
-                    <span class="nav-num">5</span>
-                    <span class="nav-label">Export</span>
-                </button>
-            </nav>
-        </header>
+  <!-- App -->
+  <div id="app" class="app hidden">
+    <header class="header">
+      <div class="header-logo">
+        <img src="/icon.svg" class="header-icon" />
+        <span class="header-title">SunoShip</span>
+      </div>
+      <nav class="header-nav">
+        <button class="nav-btn active" data-step="upload"><span class="nav-num">1</span>Upload</button>
+        <button class="nav-btn" data-step="enhance"><span class="nav-num">2</span>Enhance</button>
+        <button class="nav-btn" data-step="metadata"><span class="nav-num">3</span>Metadata</button>
+        <button class="nav-btn" data-step="artwork"><span class="nav-num">4</span>Artwork</button>
+        <button class="nav-btn" data-step="export"><span class="nav-num">5</span>Export</button>
+      </nav>
+    </header>
 
-        <!-- Step 1: Upload -->
-        <section id="step-upload" class="step active">
-            <div class="step-content">
-                <div class="drop-zone" id="dropZone">
-                    <div class="drop-zone-content">
-                        <div class="drop-icon">
-                            <svg viewBox="0 0 64 64" fill="none">
-                                <circle cx="32" cy="32" r="28" stroke="currentColor" stroke-width="2" stroke-dasharray="4 4" opacity="0.5"/>
-                                <path d="M32 20 L32 44 M24 28 L32 20 L40 28" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-                            </svg>
-                        </div>
-                        <h2 class="drop-title">Drop dine Suno tracks her</h2>
-                        <p class="drop-subtitle">eller klik for at vælge filer</p>
-                        <div class="drop-formats">
-                            <span class="format-tag">MP3</span>
-                            <span class="format-tag">WAV</span>
-                            <span class="format-tag">FLAC</span>
-                        </div>
-                    </div>
-                    <input type="file" id="fileInput" accept="audio/*" multiple hidden>
-                </div>
-
-                <div class="or-divider">
-                    <span>eller</span>
-                </div>
-
-                <div class="url-input-container">
-                    <div class="url-input-wrapper">
-                        <svg class="url-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-                        </svg>
-                        <input type="url" id="sunoUrl" class="url-input" placeholder="Paste Suno.ai link her...">
-                        <button id="fetchUrl" class="url-fetch-btn">Hent</button>
-                    </div>
-                </div>
-
-                <!-- Track list -->
-                <div id="trackList" class="track-list hidden">
-                    <h3 class="track-list-title">Uploadede tracks</h3>
-                    <div id="tracks" class="tracks"></div>
-                    
-                    <!-- Audio Analysis Section -->
-                    <div id="analysisSection" class="analysis-section hidden">
-                        <div class="analysis-header">
-                            <h4 class="analysis-title">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
-                                </svg>
-                                Audio Analyse
-                            </h4>
-                            <button id="reanalyzeBtn" class="btn-secondary btn-small">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M23 4v6h-6"/>
-                                    <path d="M1 20v-6h6"/>
-                                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
-                                </svg>
-                                Analysér igen
-                            </button>
-                        </div>
-                        <div class="analysis-grid">
-                            <div class="analysis-card bpm-card">
-                                <div class="analysis-icon">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <circle cx="12" cy="12" r="10"/>
-                                        <polyline points="12 6 12 12 16 14"/>
-                                    </svg>
-                                </div>
-                                <div class="analysis-data">
-                                    <span class="analysis-value" id="bpmValue">--</span>
-                                    <span class="analysis-label">BPM</span>
-                                </div>
-                                <div class="analysis-status" id="bpmStatus">Venter...</div>
-                            </div>
-                            <div class="analysis-card loudness-card">
-                                <div class="analysis-icon">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
-                                        <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
-                                        <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
-                                    </svg>
-                                </div>
-                                <div class="analysis-data">
-                                    <span class="analysis-value" id="lufsValue">--</span>
-                                    <span class="analysis-label">LUFS</span>
-                                </div>
-                                <div class="analysis-status" id="lufsStatus">Venter...</div>
-                            </div>
-                        </div>
-                        <div class="loudness-meter">
-                            <div class="meter-labels">
-                                <span>-24</span>
-                                <span>-18</span>
-                                <span>-14</span>
-                                <span>-9</span>
-                                <span>-3</span>
-                            </div>
-                            <div class="meter-bar">
-                                <div class="meter-fill" id="loudnessMeterFill"></div>
-                                <div class="meter-target" title="Spotify target: -14 LUFS"></div>
-                            </div>
-                            <div class="meter-info">
-                                <span class="meter-hint">Spotify anbefaler -14 LUFS</span>
-                                <span class="distribution-badge" id="distributionBadge">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <circle cx="12" cy="12" r="10"/>
-                                        <path d="M9 12l2 2 4-4"/>
-                                    </svg>
-                                    Distribution-klar
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <button id="continueToEnhance" class="btn-primary">
-                        Fortsæt til Enhance
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M5 12h14M12 5l7 7-7 7"/>
-                        </svg>
-                    </button>
-                </div>
-            </div>
-        </section>
-
-        <!-- Step 2: Enhance -->
-        <section id="step-enhance" class="step">
-            <div class="step-content">
-                <div class="enhance-container">
-                    <div class="enhance-header">
-                        <h2>🎛️ Audio Enhancement</h2>
-                        <p class="enhance-subtitle">Én knap - professionel lyd</p>
-                    </div>
-
-                    <!-- Track selector for enhance -->
-                    <div class="track-selector">
-                        <label>Track:</label>
-                        <select id="enhanceTrackSelector" class="select-input"></select>
-                    </div>
-
-                    <!-- Before/After comparison -->
-                    <div class="enhance-comparison">
-                        <div class="comparison-card before">
-                            <h4>📉 Før</h4>
-                            <div class="comparison-stats">
-                                <div class="stat-item">
-                                    <span class="stat-value" id="beforeLufs">--</span>
-                                    <span class="stat-label">LUFS</span>
-                                </div>
-                            </div>
-                            <div class="status-badge bad" id="beforeStatus">For lavt</div>
-                            <button class="btn-secondary btn-play" id="playBefore">
-                                ▶ Afspil original
-                            </button>
-                        </div>
-                        <div class="comparison-arrow">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M5 12h14M12 5l7 7-7 7"/>
-                            </svg>
-                        </div>
-                        <div class="comparison-card after">
-                            <h4>📈 Efter</h4>
-                            <div class="comparison-stats">
-                                <div class="stat-item">
-                                    <span class="stat-value" id="afterLufs">-14.0</span>
-                                    <span class="stat-label">LUFS</span>
-                                </div>
-                            </div>
-                            <div class="status-badge good">Spotify-klar</div>
-                            <button class="btn-secondary btn-play" id="playAfter" disabled>
-                                ▶ Afspil enhanced
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- What will be applied -->
-                    <div class="auto-enhance-info">
-                        <h4>🤖 Auto-Enhancement anvender:</h4>
-                        <ul class="enhance-list">
-                            <li>✓ Loudness → -14 LUFS (Spotify standard)</li>
-                            <li>✓ Stereo widening for bredere lyd</li>
-                            <li>✓ EQ polish (klarhed + fjern mudder)</li>
-                            <li>✓ Limiter (forhindrer clipping)</li>
-                        </ul>
-                    </div>
-
-                    <!-- Big Process button -->
-                    <div class="enhance-actions">
-                        <button id="processEnhance" class="btn-primary btn-huge">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
-                            </svg>
-                            Auto-Enhance
-                        </button>
-                    </div>
-
-                    <!-- Progress bar -->
-                    <div id="enhanceProgress" class="enhance-progress hidden">
-                        <div class="progress-label">
-                            <span id="progressText">Processerer...</span>
-                            <span id="progressPercent">0%</span>
-                        </div>
-                        <div class="progress-bar-container">
-                            <div class="progress-bar-fill" id="enhanceProgressBar"></div>
-                        </div>
-                    </div>
-
-                    <!-- Advanced toggle (hidden by default) -->
-                    <details class="advanced-settings">
-                        <summary>⚙️ Avancerede indstillinger</summary>
-                        <div class="advanced-content">
-                            <div class="control-group">
-                                <label>Target LUFS</label>
-                                <input type="range" id="loudnessSlider" min="-20" max="-8" value="-14" step="0.5" class="slider">
-                                <span class="control-value" id="loudnessValue">-14 LUFS</span>
-                            </div>
-                            <div class="control-group">
-                                <label>Stereo Width</label>
-                                <input type="range" id="stereoSlider" min="0" max="100" value="25" class="slider">
-                                <span class="control-value" id="stereoValue">25%</span>
-                            </div>
-                        </div>
-                    </details>
-
-                    <div class="step-actions">
-                        <button id="backToUploadFromEnhance" class="btn-ghost">
-                            ← Tilbage
-                        </button>
-                        <button id="skipEnhance" class="btn-ghost">
-                            Skip
-                        </button>
-                        <button id="continueToMetadata" class="btn-primary">
-                            Fortsæt →
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Step 3: Metadata -->
-        <section id="step-metadata" class="step">
-            <div class="step-content">
-                <div class="metadata-container">
-                    <div class="track-selector">
-                        <label>Vælg track:</label>
-                        <select id="trackSelector" class="select-input"></select>
-                    </div>
-
-                    <div class="metadata-form">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="trackTitle">Titel *</label>
-                                <input type="text" id="trackTitle" class="text-input" placeholder="Track titel">
-                            </div>
-                            <div class="form-group">
-                                <label for="artistName">Artist *</label>
-                                <input type="text" id="artistName" class="text-input" placeholder="Artist navn">
-                            </div>
-                        </div>
-
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="albumName">Album</label>
-                                <input type="text" id="albumName" class="text-input" placeholder="Album navn (valgfrit)">
-                            </div>
-                            <div class="form-group">
-                                <label for="genre">Genre *</label>
-                                <select id="genre" class="select-input">
-                                    <option value="">Vælg genre...</option>
-                                    <option value="pop">Pop</option>
-                                    <option value="rock">Rock</option>
-                                    <option value="hip-hop">Hip-Hop</option>
-                                    <option value="electronic">Electronic</option>
-                                    <option value="rnb">R&B</option>
-                                    <option value="jazz">Jazz</option>
-                                    <option value="classical">Classical</option>
-                                    <option value="folk">Folk</option>
-                                    <option value="country">Country</option>
-                                    <option value="latin">Latin</option>
-                                    <option value="metal">Metal</option>
-                                    <option value="indie">Indie</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="releaseDate">Release dato</label>
-                                <input type="date" id="releaseDate" class="text-input">
-                            </div>
-                            <div class="form-group">
-                                <label for="copyrightYear">Copyright år</label>
-                                <input type="number" id="copyrightYear" class="text-input" placeholder="2025" min="1900" max="2100">
-                            </div>
-                        </div>
-
-                        <div class="form-row">
-                            <div class="form-group full-width">
-                                <label for="isrc">
-                                    ISRC Kode
-                                    <button type="button" id="generateIsrc" class="generate-btn">Auto-generér</button>
-                                </label>
-                                <input type="text" id="isrc" class="text-input" placeholder="XX-XXX-XX-XXXXX" maxlength="15">
-                                <span class="input-hint">Format: Land-Registrant-År-Nummer</span>
-                            </div>
-                        </div>
-
-                        <div class="form-group full-width">
-                            <label for="lyrics">Lyrics</label>
-                            <textarea id="lyrics" class="textarea-input" rows="6" placeholder="Indsæt lyrics her..."></textarea>
-                        </div>
-
-                        <div class="ai-suggest-box">
-                            <button type="button" id="aiSuggest" class="btn-secondary">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-                                </svg>
-                                AI Forslag
-                            </button>
-                            <span class="ai-hint">Få genre, tags og mood forslag baseret på titel</span>
-                        </div>
-                    </div>
-
-                    <div class="step-actions">
-                        <button id="backToUpload" class="btn-ghost">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M19 12H5M12 19l-7-7 7-7"/>
-                            </svg>
-                            Tilbage
-                        </button>
-                        <button id="continueToArtwork" class="btn-primary">
-                            Fortsæt til Artwork
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M5 12h14M12 5l7 7-7 7"/>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Step 4: Artwork -->
-        <section id="step-artwork" class="step">
-            <div class="step-content">
-                <div class="artwork-container">
-                    <div class="artwork-preview">
-                        <div id="coverPreview" class="cover-preview">
-                            <div class="cover-placeholder">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                                    <rect x="3" y="3" width="18" height="18" rx="2"/>
-                                    <circle cx="8.5" cy="8.5" r="1.5"/>
-                                    <path d="M21 15l-5-5L5 21"/>
-                                </svg>
-                                <span>3000 × 3000 px</span>
-                            </div>
-                        </div>
-                        <div class="cover-info">
-                            <p id="coverStatus" class="cover-status">Intet cover uploadet</p>
-                            <p class="cover-requirements">Krav: 3000×3000px, JPG/PNG</p>
-                        </div>
-                    </div>
-
-                    <div class="artwork-actions">
-                        <div class="artwork-upload-zone" id="artworkDropZone">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                <polyline points="17 8 12 3 7 8"/>
-                                <line x1="12" y1="3" x2="12" y2="15"/>
-                            </svg>
-                            <span>Drop cover art her</span>
-                            <span class="small">eller klik for at vælge</span>
-                            <input type="file" id="artworkInput" accept="image/*" hidden>
-                        </div>
-
-                        <div class="or-divider small">
-                            <span>eller</span>
-                        </div>
-
-                        <div class="ai-artwork-section">
-                            <label for="aiPrompt">Generér med AI</label>
-                            <div class="ai-prompt-wrapper">
-                                <textarea id="aiPrompt" class="textarea-input" rows="2" placeholder="Beskriv dit cover... f.eks. 'Abstrakt neon by om natten, synthwave stil'"></textarea>
-                                <button id="generateArtwork" class="btn-secondary" disabled>
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
-                                    </svg>
-                                    Generér
-                                </button>
-                            </div>
-                            <p class="ai-hint">AI cover generation kræver API nøgle</p>
-                        </div>
-                    </div>
-
-                    <div class="album-mockup hidden" id="albumMockup">
-                        <h4>Preview</h4>
-                        <div class="mockup-grid">
-                            <div class="mockup-item spotify">
-                                <img id="mockupSpotify" src="" alt="Spotify preview">
-                                <span>Spotify</span>
-                            </div>
-                            <div class="mockup-item apple">
-                                <img id="mockupApple" src="" alt="Apple Music preview">
-                                <span>Apple Music</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="step-actions">
-                        <button id="backToMetadata" class="btn-ghost">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M19 12H5M12 19l-7-7 7-7"/>
-                            </svg>
-                            Tilbage
-                        </button>
-                        <button id="continueToExport" class="btn-primary">
-                            Fortsæt til Export
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M5 12h14M12 5l7 7-7 7"/>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Step 5: Export -->
-        <section id="step-export" class="step">
-            <div class="step-content">
-                <div class="export-container">
-                    <div class="export-summary">
-                        <h2>Klar til distribution! 🚀</h2>
-                        
-                        <div class="summary-card">
-                            <div class="summary-cover" id="summaryCover">
-                                <div class="cover-placeholder small">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                                        <rect x="3" y="3" width="18" height="18" rx="2"/>
-                                        <circle cx="8.5" cy="8.5" r="1.5"/>
-                                        <path d="M21 15l-5-5L5 21"/>
-                                    </svg>
-                                </div>
-                            </div>
-                            <div class="summary-info">
-                                <h3 id="summaryTitle">Track Titel</h3>
-                                <p id="summaryArtist">Artist Navn</p>
-                                <div class="summary-meta">
-                                    <span id="summaryGenre" class="meta-tag">Genre</span>
-                                    <span id="summaryYear" class="meta-tag">2025</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="export-checklist">
-                            <div class="checklist-item" id="checkAudio">
-                                <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <polyline points="20 6 9 17 4 12"/>
-                                </svg>
-                                <span>Lydfil klar</span>
-                            </div>
-                            <div class="checklist-item" id="checkEnhanced">
-                                <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <polyline points="20 6 9 17 4 12"/>
-                                </svg>
-                                <span>Audio enhanced</span>
-                            </div>
-                            <div class="checklist-item" id="checkMetadata">
-                                <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <polyline points="20 6 9 17 4 12"/>
-                                </svg>
-                                <span>Metadata udfyldt</span>
-                            </div>
-                            <div class="checklist-item" id="checkArtwork">
-                                <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <polyline points="20 6 9 17 4 12"/>
-                                </svg>
-                                <span>Cover art uploadet</span>
-                            </div>
-                            <div class="checklist-item" id="checkAnalysis">
-                                <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <polyline points="20 6 9 17 4 12"/>
-                                </svg>
-                                <span>Audio analyseret (BPM + LUFS)</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="export-options">
-                        <h3>Export format</h3>
-                        <div class="format-options">
-                            <label class="format-option">
-                                <input type="radio" name="exportFormat" value="zip" checked>
-                                <div class="format-card">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M21 8v13H3V8"/>
-                                        <path d="M1 3h22v5H1z"/>
-                                        <path d="M10 12h4"/>
-                                    </svg>
-                                    <span class="format-name">ZIP Pakke</span>
-                                    <span class="format-desc">Alle filer samlet</span>
-                                </div>
-                            </label>
-                            <label class="format-option">
-                                <input type="radio" name="exportFormat" value="individual">
-                                <div class="format-card">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>
-                                        <polyline points="13 2 13 9 20 9"/>
-                                    </svg>
-                                    <span class="format-name">Individuelle filer</span>
-                                    <span class="format-desc">Download separat</span>
-                                </div>
-                            </label>
-                        </div>
-
-                        <div class="metadata-format">
-                            <label>Metadata format:</label>
-                            <div class="toggle-group">
-                                <button type="button" class="toggle-btn active" data-format="json">JSON</button>
-                                <button type="button" class="toggle-btn" data-format="csv">CSV</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="step-actions">
-                        <button id="backToArtwork" class="btn-ghost">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M19 12H5M12 19l-7-7 7-7"/>
-                            </svg>
-                            Tilbage
-                        </button>
-                        <button id="downloadExport" class="btn-primary btn-large">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                <polyline points="7 10 12 15 17 10"/>
-                                <line x1="12" y1="15" x2="12" y2="3"/>
-                            </svg>
-                            Download Pakke
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Audio Player (floating) -->
-        <div id="audioPlayer" class="audio-player hidden">
-            <div class="player-info">
-                <div class="player-cover"></div>
-                <div class="player-details">
-                    <span class="player-title">Track</span>
-                    <span class="player-artist">Artist</span>
-                </div>
-            </div>
-            <div class="player-controls">
-                <button id="playPause" class="player-btn">
-                    <svg class="play-icon" viewBox="0 0 24 24" fill="currentColor">
-                        <polygon points="5 3 19 12 5 21 5 3"/>
-                    </svg>
-                    <svg class="pause-icon hidden" viewBox="0 0 24 24" fill="currentColor">
-                        <rect x="6" y="4" width="4" height="16"/>
-                        <rect x="14" y="4" width="4" height="16"/>
-                    </svg>
-                </button>
-            </div>
-            <div class="player-progress">
-                <div class="progress-bar">
-                    <div class="progress-fill" id="progressFill"></div>
-                </div>
-                <div class="time-display">
-                    <span id="currentTime">0:00</span>
-                    <span id="duration">0:00</span>
-                </div>
-            </div>
-            <div class="player-waveform" id="waveform"></div>
+    <!-- STEP 1 -->
+    <section id="step-upload" class="step active">
+      <div class="step-content">
+        <div id="dropZone" class="drop-zone">
+          <div class="drop-zone-content">
+            <h2>Drop audio files</h2>
+            <p>MP3, WAV, FLAC</p>
+            <input id="fileInput" type="file" accept="audio/*" multiple hidden />
+          </div>
         </div>
-    </main>
 
-    <!-- Toast notifications -->
-    <div id="toasts" class="toasts"></div>
+        <div id="trackList" class="track-list hidden">
+          <h3>Tracks</h3>
+          <div id="tracks"></div>
+        </div>
 
-    <script src="app.js?v=222"></script>
+        <button id="continueToEnhance" class="btn primary" disabled>Fortsæt →</button>
+      </div>
+    </section>
+
+    <!-- STEP 2 -->
+    <section id="step-enhance" class="step">
+      <div class="step-content enhance-container">
+        <h2>Auto-Enhance</h2>
+
+        <div class="enhance-actions">
+          <button id="processEnhance" class="btn primary btn-huge">Auto-Enhance</button>
+        </div>
+
+        <div id="enhanceProgress" class="enhance-progress hidden">
+          <div class="progress-label">
+            <span id="progressText">Starter…</span>
+            <span id="progressPercent">0%</span>
+          </div>
+          <div class="progress-bar-container">
+            <div id="enhanceProgressBar" class="progress-bar-fill"></div>
+          </div>
+        </div>
+
+        <div class="nav-row">
+          <button id="backToUploadFromEnhance" class="btn ghost">← Tilbage</button>
+          <button id="skipEnhance" class="btn ghost">Skip</button>
+          <button id="continueToMetadata" class="btn primary">Fortsæt →</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- STEP 3 -->
+    <section id="step-metadata" class="step">
+      <div class="step-content">
+        <h2>Metadata</h2>
+        <p>Udfyld titel, artist, genre m.m.</p>
+
+        <div class="nav-row">
+          <button id="backToEnhance" class="btn ghost">← Tilbage</button>
+          <button id="continueToArtwork" class="btn primary">Fortsæt →</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- STEP 4 -->
+    <section id="step-artwork" class="step">
+      <div class="step-content">
+        <h2>Artwork</h2>
+        <input id="coverInput" type="file" accept="image/*" />
+        <img id="coverPreview" />
+
+        <div class="nav-row">
+          <button id="backToMetadata" class="btn ghost">← Tilbage</button>
+          <button id="continueToExport" class="btn primary">Fortsæt →</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- STEP 5 -->
+    <section id="step-export" class="step">
+      <div class="step-content">
+        <h2>Export</h2>
+        <button id="exportZip" class="btn primary btn-huge">Download ZIP</button>
+
+        <div class="nav-row">
+          <button id="backToArtwork" class="btn ghost">← Tilbage</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div id="toasts" class="toasts"></div>
+
+  <script src="/app.js"></script>
 </body>
 </html>
