@@ -617,7 +617,312 @@ body {
 }
 
 /* =====================================================
-   STEP 2: METADATA
+   STEP 2: ENHANCE
+   ===================================================== */
+.enhance-container {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.enhance-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.enhance-header h2 {
+    font-size: 1.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.enhance-subtitle {
+    color: var(--text-secondary);
+}
+
+/* Before/After Comparison */
+.enhance-comparison {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.comparison-card {
+    flex: 1;
+    padding: 1.5rem;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+}
+
+.comparison-card h4 {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 1rem;
+}
+
+.comparison-card.before {
+    border-color: var(--border-color);
+}
+
+.comparison-card.after {
+    border-color: var(--accent-1);
+    background: linear-gradient(135deg, rgba(29, 185, 84, 0.05), rgba(102, 126, 234, 0.05));
+}
+
+.comparison-stats {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.stat-item {
+    flex: 1;
+    text-align: center;
+}
+
+.stat-label {
+    display: block;
+    font-size: 0.6875rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 0.25rem;
+}
+
+.stat-value {
+    display: block;
+    font-size: 1.125rem;
+    font-weight: 600;
+    font-family: var(--font-mono);
+}
+
+.comparison-card.after .stat-value {
+    color: var(--accent-1);
+}
+
+.comparison-arrow {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent-1);
+}
+
+.comparison-arrow svg {
+    width: 24px;
+    height: 24px;
+}
+
+.btn-play {
+    width: 100%;
+    justify-content: center;
+}
+
+.btn-play svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* Enhancement Controls */
+.enhance-controls {
+    padding: 1.5rem;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    margin-bottom: 1.5rem;
+}
+
+.enhance-controls h3 {
+    font-size: 1rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.control-group {
+    margin-bottom: 1.5rem;
+}
+
+.control-group:last-child {
+    margin-bottom: 0;
+}
+
+.control-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.control-header label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.control-header input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--accent-1);
+    cursor: pointer;
+}
+
+.control-value {
+    font-family: var(--font-mono);
+    font-size: 0.875rem;
+    color: var(--accent-1);
+    background: rgba(29, 185, 84, 0.1);
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-sm);
+}
+
+.slider {
+    width: 100%;
+    height: 6px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: var(--border-color);
+    border-radius: 3px;
+    outline: none;
+    cursor: pointer;
+}
+
+.slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    background: var(--accent-1);
+    border-radius: 50%;
+    cursor: pointer;
+    transition: transform var(--transition-fast);
+}
+
+.slider::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+}
+
+.slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    background: var(--accent-1);
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+}
+
+.control-hint {
+    margin-top: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.eq-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding-left: 1.5rem;
+}
+
+.eq-option {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+
+.eq-option input {
+    accent-color: var(--accent-1);
+}
+
+/* Enhance Actions */
+.enhance-actions {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+}
+
+/* Progress Bar */
+.enhance-progress {
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: var(--card-bg);
+    border-radius: var(--radius-md);
+}
+
+.enhance-progress.hidden {
+    display: none;
+}
+
+.progress-label {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+}
+
+#progressText {
+    color: var(--text-secondary);
+}
+
+#progressPercent {
+    color: var(--accent-1);
+    font-family: var(--font-mono);
+}
+
+.progress-bar-container {
+    height: 8px;
+    background: var(--border-color);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--accent-gradient);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+/* Export Format Toggle */
+.enhance-export-format {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    justify-content: center;
+}
+
+.enhance-export-format label {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+    .enhance-comparison {
+        flex-direction: column;
+    }
+    
+    .comparison-arrow {
+        transform: rotate(90deg);
+    }
+    
+    .comparison-stats {
+        flex-wrap: wrap;
+    }
+}
+
+/* =====================================================
+   STEP 3: METADATA
    ===================================================== */
 .metadata-container {
     max-width: 700px;
@@ -762,7 +1067,7 @@ body {
 }
 
 /* =====================================================
-   STEP 3: ARTWORK
+   STEP 4: ARTWORK
    ===================================================== */
 .artwork-container {
     display: grid;
@@ -943,7 +1248,7 @@ body {
 }
 
 /* =====================================================
-   STEP 4: EXPORT
+   STEP 5: EXPORT
    ===================================================== */
 .export-container {
     display: flex;
