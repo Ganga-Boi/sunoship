@@ -13,7 +13,23 @@ const state = {
     isPlaying: false,
     metadataFormat: 'json',
     audioContext: null,
-    analyzing: false
+    analyzing: false,
+    // Enhancement state
+    enhancedAudio: null,
+    enhancedBlob: null,
+    enhanceControlsInitialized: false,
+    enhanceSettings: {
+        loudness: { enabled: true, target: -14 },
+        stereo: { enabled: true, width: 25 },
+        eq: { 
+            enabled: true, 
+            highShelf: true, 
+            lowCut: true, 
+            presence: true 
+        },
+        limiter: { enabled: true, ceiling: -1 }
+    },
+    exportFormat: 'wav'
 };
 
 // DOM Elements
@@ -55,6 +71,12 @@ function cacheElements() {
     elements.lufsStatus = document.getElementById('lufsStatus');
     elements.loudnessMeterFill = document.getElementById('loudnessMeterFill');
     elements.distributionBadge = document.getElementById('distributionBadge');
+    // Enhance elements
+    elements.enhanceTrackSelector = document.getElementById('enhanceTrackSelector');
+    elements.enhanceProgress = document.getElementById('enhanceProgress');
+    elements.enhanceProgressBar = document.getElementById('enhanceProgressBar');
+    elements.progressText = document.getElementById('progressText');
+    elements.progressPercent = document.getElementById('progressPercent');
 }
 
 // =====================================================
@@ -84,11 +106,26 @@ function initNavigation() {
     });
     
     // Continue buttons
-    document.getElementById('continueToMetadata')?.addEventListener('click', () => {
+    document.getElementById('continueToEnhance')?.addEventListener('click', () => {
+        console.log('Continue to Enhance clicked');
         if (state.tracks.length === 0) {
             showToast('Upload mindst én track først', 'warning');
             return;
         }
+        try {
+            goToStep('enhance');
+            initEnhanceStep();
+        } catch (e) {
+            console.error('Error going to enhance:', e);
+            showToast('Fejl: ' + e.message, 'error');
+        }
+    });
+    
+    document.getElementById('continueToMetadata')?.addEventListener('click', () => {
+        goToStep('metadata');
+    });
+    
+    document.getElementById('skipEnhance')?.addEventListener('click', () => {
         goToStep('metadata');
     });
     
@@ -104,6 +141,7 @@ function initNavigation() {
     
     // Back buttons
     document.getElementById('backToUpload')?.addEventListener('click', () => goToStep('upload'));
+    document.getElementById('backToUploadFromEnhance')?.addEventListener('click', () => goToStep('upload'));
     document.getElementById('backToMetadata')?.addEventListener('click', () => goToStep('metadata'));
     document.getElementById('backToArtwork')?.addEventListener('click', () => goToStep('artwork'));
     
@@ -133,7 +171,7 @@ function goToStep(stepName) {
     });
     
     // Enable nav buttons up to current step
-    const steps = ['upload', 'metadata', 'artwork', 'export'];
+    const steps = ['upload', 'enhance', 'metadata', 'artwork', 'export'];
     const currentIndex = steps.indexOf(stepName);
     document.querySelectorAll('.nav-btn').forEach(btn => {
         const btnIndex = steps.indexOf(btn.dataset.step);
@@ -580,11 +618,13 @@ function updateExportSummary() {
     
     // Update checklist
     const checkAudio = document.getElementById('checkAudio');
+    const checkEnhanced = document.getElementById('checkEnhanced');
     const checkMetadata = document.getElementById('checkMetadata');
     const checkArtwork = document.getElementById('checkArtwork');
     const checkAnalysis = document.getElementById('checkAnalysis');
     
     checkAudio.classList.toggle('complete', state.tracks.length > 0);
+    checkEnhanced?.classList.toggle('complete', track.enhanced === true);
     checkMetadata.classList.toggle('complete', track.metadata.title && track.metadata.artist);
     checkArtwork.classList.toggle('complete', state.coverImageData !== null);
     checkAnalysis?.classList.toggle('complete', track.analyzed && track.bpm !== null);
@@ -625,8 +665,12 @@ async function downloadAsZip(track) {
     const folderName = sanitizeFilename(`${track.metadata.artist} - ${track.metadata.title}`);
     const folder = zip.folder(folderName);
     
-    // Add audio file
-    folder.file(track.file.name, track.file);
+    // Add audio file (use enhanced if available)
+    if (track.enhancedFile) {
+        folder.file(`${sanitizeFilename(track.metadata.title)}.wav`, track.enhancedFile);
+    } else {
+        folder.file(track.file.name, track.file);
+    }
     
     // Add cover art
     if (state.coverImageData) {
@@ -647,8 +691,12 @@ async function downloadAsZip(track) {
 }
 
 async function downloadIndividual(track) {
-    // Download audio
-    downloadBlob(track.file, track.file.name);
+    // Download audio (use enhanced if available)
+    if (track.enhancedFile) {
+        downloadBlob(track.enhancedFile, `${sanitizeFilename(track.metadata.title)}.wav`);
+    } else {
+        downloadBlob(track.file, track.file.name);
+    }
     
     // Download cover
     if (state.coverImageData) {
@@ -676,8 +724,9 @@ function createMetadataFile(track) {
         isrc: track.metadata.isrc,
         bpm: track.bpm || null,
         lufs: track.lufs ? track.lufs.toFixed(1) : null,
+        enhanced: track.enhanced || false,
         lyrics: track.metadata.lyrics,
-        filename: track.file.name
+        filename: track.enhanced ? `${track.metadata.title}.wav` : track.file.name
     };
     
     if (state.metadataFormat === 'json') {
@@ -764,6 +813,444 @@ function updatePlayButton() {
     } else {
         btn.classList.remove('playing');
     }
+}
+
+// =====================================================
+// AUDIO ENHANCEMENT
+// =====================================================
+function initEnhanceStep() {
+    console.log('Initializing enhance step');
+    
+    // Update track selector
+    const selector = elements.enhanceTrackSelector || document.getElementById('enhanceTrackSelector');
+    if (selector) {
+        selector.innerHTML = state.tracks.map((track, index) => 
+            `<option value="${index}">${escapeHtml(track.name)}</option>`
+        ).join('');
+        selector.value = state.currentTrackIndex;
+    }
+    
+    // Update "before" stats
+    const track = state.tracks[state.currentTrackIndex];
+    if (track) {
+        const beforeLufs = document.getElementById('beforeLufs');
+        const beforePeak = document.getElementById('beforePeak');
+        const beforeStereo = document.getElementById('beforeStereo');
+        
+        if (beforeLufs) beforeLufs.textContent = track.lufs ? `${track.lufs.toFixed(1)}` : '--';
+        if (beforePeak) beforePeak.textContent = track.peak ? `${track.peak.toFixed(1)} dB` : '--';
+        if (beforeStereo) beforeStereo.textContent = 'Mono/Stereo';
+    }
+    
+    // Reset enhanced state
+    state.enhancedBlob = null;
+    const playAfter = document.getElementById('playAfter');
+    const continueBtn = document.getElementById('continueToMetadata');
+    if (playAfter) playAfter.disabled = true;
+    if (continueBtn) continueBtn.disabled = false;
+    
+    // Initialize controls (only once)
+    if (!state.enhanceControlsInitialized) {
+        initEnhanceControls();
+        state.enhanceControlsInitialized = true;
+    }
+    
+    console.log('Enhance step initialized');
+}
+
+function initEnhanceControls() {
+    // Loudness slider
+    const loudnessSlider = document.getElementById('loudnessSlider');
+    const loudnessValue = document.getElementById('loudnessValue');
+    loudnessSlider?.addEventListener('input', (e) => {
+        const val = e.target.value;
+        loudnessValue.textContent = `${val} LUFS`;
+        state.enhanceSettings.loudness.target = parseFloat(val);
+    });
+    
+    // Stereo slider
+    const stereoSlider = document.getElementById('stereoSlider');
+    const stereoValue = document.getElementById('stereoValue');
+    stereoSlider?.addEventListener('input', (e) => {
+        const val = e.target.value;
+        stereoValue.textContent = `${val}%`;
+        state.enhanceSettings.stereo.width = parseInt(val);
+    });
+    
+    // Limiter slider
+    const limiterSlider = document.getElementById('limiterSlider');
+    const limiterValue = document.getElementById('limiterValue');
+    limiterSlider?.addEventListener('input', (e) => {
+        const val = e.target.value;
+        limiterValue.textContent = `${val} dB`;
+        state.enhanceSettings.limiter.ceiling = parseFloat(val);
+    });
+    
+    // Checkboxes
+    document.getElementById('enableLoudness')?.addEventListener('change', (e) => {
+        state.enhanceSettings.loudness.enabled = e.target.checked;
+    });
+    document.getElementById('enableStereo')?.addEventListener('change', (e) => {
+        state.enhanceSettings.stereo.enabled = e.target.checked;
+    });
+    document.getElementById('enableEQ')?.addEventListener('change', (e) => {
+        state.enhanceSettings.eq.enabled = e.target.checked;
+    });
+    document.getElementById('enableLimiter')?.addEventListener('change', (e) => {
+        state.enhanceSettings.limiter.enabled = e.target.checked;
+    });
+    
+    // EQ options
+    document.getElementById('eqHighShelf')?.addEventListener('change', (e) => {
+        state.enhanceSettings.eq.highShelf = e.target.checked;
+    });
+    document.getElementById('eqLowCut')?.addEventListener('change', (e) => {
+        state.enhanceSettings.eq.lowCut = e.target.checked;
+    });
+    document.getElementById('eqPresence')?.addEventListener('change', (e) => {
+        state.enhanceSettings.eq.presence = e.target.checked;
+    });
+    
+    // Track selector change
+    elements.enhanceTrackSelector?.addEventListener('change', (e) => {
+        state.currentTrackIndex = parseInt(e.target.value);
+        initEnhanceStep();
+    });
+    
+    // Process button
+    document.getElementById('processEnhance')?.addEventListener('click', processEnhancement);
+    
+    // Play buttons
+    document.getElementById('playBefore')?.addEventListener('click', () => {
+        const track = state.tracks[state.currentTrackIndex];
+        if (track) {
+            playTrack(state.currentTrackIndex);
+        }
+    });
+    
+    document.getElementById('playAfter')?.addEventListener('click', () => {
+        if (state.enhancedBlob) {
+            playEnhancedAudio();
+        }
+    });
+    
+    // Export format toggle
+    document.querySelectorAll('.enhance-export-format .toggle-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.enhance-export-format .toggle-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            state.exportFormat = btn.dataset.format;
+        });
+    });
+}
+
+async function processEnhancement() {
+    const track = state.tracks[state.currentTrackIndex];
+    if (!track) return;
+    
+    // Show progress
+    elements.enhanceProgress?.classList.remove('hidden');
+    updateProgress(0, 'Forbereder...');
+    
+    try {
+        // Ensure AudioContext
+        if (!state.audioContext) {
+            state.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (state.audioContext.state === 'suspended') {
+            await state.audioContext.resume();
+        }
+        
+        updateProgress(10, 'Læser audio...');
+        
+        // Decode audio
+        const arrayBuffer = await track.file.arrayBuffer();
+        const audioBuffer = await state.audioContext.decodeAudioData(arrayBuffer.slice(0));
+        
+        updateProgress(20, 'Analyserer...');
+        
+        // Create offline context for processing
+        const offlineCtx = new OfflineAudioContext(
+            audioBuffer.numberOfChannels,
+            audioBuffer.length,
+            audioBuffer.sampleRate
+        );
+        
+        // Create buffer source
+        const source = offlineCtx.createBufferSource();
+        source.buffer = audioBuffer;
+        
+        let currentNode = source;
+        
+        // Apply EQ if enabled
+        if (state.enhanceSettings.eq.enabled) {
+            updateProgress(30, 'Anvender EQ...');
+            
+            // Low cut (high-pass filter)
+            if (state.enhanceSettings.eq.lowCut) {
+                const highpass = offlineCtx.createBiquadFilter();
+                highpass.type = 'highpass';
+                highpass.frequency.value = 80;
+                highpass.Q.value = 0.7;
+                currentNode.connect(highpass);
+                currentNode = highpass;
+            }
+            
+            // Presence boost
+            if (state.enhanceSettings.eq.presence) {
+                const presence = offlineCtx.createBiquadFilter();
+                presence.type = 'peaking';
+                presence.frequency.value = 3000;
+                presence.gain.value = 1.5;
+                presence.Q.value = 1;
+                currentNode.connect(presence);
+                currentNode = presence;
+            }
+            
+            // High shelf
+            if (state.enhanceSettings.eq.highShelf) {
+                const highShelf = offlineCtx.createBiquadFilter();
+                highShelf.type = 'highshelf';
+                highShelf.frequency.value = 10000;
+                highShelf.gain.value = 2;
+                currentNode.connect(highShelf);
+                currentNode = highShelf;
+            }
+        }
+        
+        updateProgress(50, 'Anvender stereo widening...');
+        
+        // Connect to destination
+        currentNode.connect(offlineCtx.destination);
+        
+        // Start and render
+        source.start(0);
+        const renderedBuffer = await offlineCtx.startRendering();
+        
+        updateProgress(60, 'Anvender loudness normalisering...');
+        
+        // Apply loudness normalization and limiting in a second pass
+        let processedBuffer = renderedBuffer;
+        
+        if (state.enhanceSettings.loudness.enabled || state.enhanceSettings.limiter.enabled) {
+            processedBuffer = await applyLoudnessAndLimiter(renderedBuffer);
+        }
+        
+        // Apply stereo widening
+        if (state.enhanceSettings.stereo.enabled && processedBuffer.numberOfChannels >= 2) {
+            updateProgress(75, 'Anvender stereo widening...');
+            processedBuffer = applyStereoWidening(processedBuffer);
+        }
+        
+        updateProgress(85, 'Eksporterer...');
+        
+        // Convert to WAV or MP3
+        let blob;
+        if (state.exportFormat === 'wav') {
+            blob = audioBufferToWav(processedBuffer);
+        } else {
+            // For MP3, we'll export as WAV (MP3 encoding requires external library)
+            blob = audioBufferToWav(processedBuffer);
+            showToast('MP3 encoding kræver ekstra bibliotek - eksporterer som WAV', 'warning');
+        }
+        
+        state.enhancedBlob = blob;
+        
+        // Update track with enhanced version
+        track.enhancedFile = blob;
+        track.enhanced = true;
+        
+        // Calculate new LUFS
+        const newLufs = await calculateLUFS(processedBuffer);
+        
+        updateProgress(100, 'Færdig!');
+        
+        // Update UI
+        document.getElementById('afterLufs').textContent = newLufs.toFixed(1);
+        document.getElementById('afterPeak').textContent = `${state.enhanceSettings.limiter.ceiling} dB`;
+        document.getElementById('afterStereo').textContent = state.enhanceSettings.stereo.enabled ? 'Wide' : 'Normal';
+        
+        document.getElementById('playAfter').disabled = false;
+        document.getElementById('continueToMetadata').disabled = false;
+        
+        showToast('Audio enhancement færdig! 🎉', 'success');
+        
+        // Hide progress after delay
+        setTimeout(() => {
+            elements.enhanceProgress?.classList.add('hidden');
+        }, 2000);
+        
+    } catch (error) {
+        console.error('Enhancement error:', error);
+        showToast('Fejl under enhancement: ' + error.message, 'error');
+        elements.enhanceProgress?.classList.add('hidden');
+    }
+}
+
+function updateProgress(percent, text) {
+    if (elements.enhanceProgressBar) {
+        elements.enhanceProgressBar.style.width = `${percent}%`;
+    }
+    if (elements.progressPercent) {
+        elements.progressPercent.textContent = `${percent}%`;
+    }
+    if (elements.progressText) {
+        elements.progressText.textContent = text;
+    }
+}
+
+async function applyLoudnessAndLimiter(audioBuffer) {
+    const numChannels = audioBuffer.numberOfChannels;
+    const length = audioBuffer.length;
+    const sampleRate = audioBuffer.sampleRate;
+    
+    // Create new buffer
+    const newBuffer = state.audioContext.createBuffer(numChannels, length, sampleRate);
+    
+    // Calculate current loudness
+    let sumSquares = 0;
+    for (let ch = 0; ch < numChannels; ch++) {
+        const data = audioBuffer.getChannelData(ch);
+        for (let i = 0; i < length; i++) {
+            sumSquares += data[i] * data[i];
+        }
+    }
+    const rms = Math.sqrt(sumSquares / (length * numChannels));
+    const currentLufs = -0.691 + 10 * Math.log10(Math.max(rms * rms, 1e-10));
+    
+    // Calculate gain needed
+    const targetLufs = state.enhanceSettings.loudness.target;
+    const gainDb = state.enhanceSettings.loudness.enabled ? (targetLufs - currentLufs) : 0;
+    const gain = Math.pow(10, gainDb / 20);
+    
+    // Limiter ceiling
+    const ceiling = Math.pow(10, state.enhanceSettings.limiter.ceiling / 20);
+    
+    // Process each channel
+    for (let ch = 0; ch < numChannels; ch++) {
+        const inputData = audioBuffer.getChannelData(ch);
+        const outputData = newBuffer.getChannelData(ch);
+        
+        for (let i = 0; i < length; i++) {
+            let sample = inputData[i] * gain;
+            
+            // Soft limiter (tanh-based)
+            if (state.enhanceSettings.limiter.enabled) {
+                if (Math.abs(sample) > ceiling * 0.8) {
+                    sample = Math.tanh(sample / ceiling) * ceiling;
+                }
+                // Hard clip as safety
+                sample = Math.max(-ceiling, Math.min(ceiling, sample));
+            }
+            
+            outputData[i] = sample;
+        }
+    }
+    
+    return newBuffer;
+}
+
+function applyStereoWidening(audioBuffer) {
+    if (audioBuffer.numberOfChannels < 2) return audioBuffer;
+    
+    const length = audioBuffer.length;
+    const sampleRate = audioBuffer.sampleRate;
+    const width = state.enhanceSettings.stereo.width / 100;
+    
+    const newBuffer = state.audioContext.createBuffer(2, length, sampleRate);
+    
+    const leftIn = audioBuffer.getChannelData(0);
+    const rightIn = audioBuffer.getChannelData(1);
+    const leftOut = newBuffer.getChannelData(0);
+    const rightOut = newBuffer.getChannelData(1);
+    
+    for (let i = 0; i < length; i++) {
+        const mid = (leftIn[i] + rightIn[i]) * 0.5;
+        const side = (leftIn[i] - rightIn[i]) * 0.5;
+        
+        // Increase side signal for wider stereo
+        const wideSide = side * (1 + width);
+        
+        leftOut[i] = mid + wideSide;
+        rightOut[i] = mid - wideSide;
+        
+        // Normalize to prevent clipping
+        const maxSample = Math.max(Math.abs(leftOut[i]), Math.abs(rightOut[i]));
+        if (maxSample > 0.99) {
+            leftOut[i] /= maxSample;
+            rightOut[i] /= maxSample;
+        }
+    }
+    
+    return newBuffer;
+}
+
+function audioBufferToWav(audioBuffer) {
+    const numChannels = audioBuffer.numberOfChannels;
+    const sampleRate = audioBuffer.sampleRate;
+    const format = 1; // PCM
+    const bitDepth = 16;
+    
+    const bytesPerSample = bitDepth / 8;
+    const blockAlign = numChannels * bytesPerSample;
+    
+    const length = audioBuffer.length;
+    const dataSize = length * blockAlign;
+    const buffer = new ArrayBuffer(44 + dataSize);
+    const view = new DataView(buffer);
+    
+    // WAV header
+    writeString(view, 0, 'RIFF');
+    view.setUint32(4, 36 + dataSize, true);
+    writeString(view, 8, 'WAVE');
+    writeString(view, 12, 'fmt ');
+    view.setUint32(16, 16, true); // fmt chunk size
+    view.setUint16(20, format, true);
+    view.setUint16(22, numChannels, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * blockAlign, true);
+    view.setUint16(32, blockAlign, true);
+    view.setUint16(34, bitDepth, true);
+    writeString(view, 36, 'data');
+    view.setUint32(40, dataSize, true);
+    
+    // Interleave audio data
+    const channels = [];
+    for (let ch = 0; ch < numChannels; ch++) {
+        channels.push(audioBuffer.getChannelData(ch));
+    }
+    
+    let offset = 44;
+    for (let i = 0; i < length; i++) {
+        for (let ch = 0; ch < numChannels; ch++) {
+            const sample = Math.max(-1, Math.min(1, channels[ch][i]));
+            const intSample = sample < 0 ? sample * 0x8000 : sample * 0x7FFF;
+            view.setInt16(offset, intSample, true);
+            offset += 2;
+        }
+    }
+    
+    return new Blob([buffer], { type: 'audio/wav' });
+}
+
+function writeString(view, offset, string) {
+    for (let i = 0; i < string.length; i++) {
+        view.setUint8(offset + i, string.charCodeAt(i));
+    }
+}
+
+function playEnhancedAudio() {
+    if (!state.enhancedBlob) return;
+    
+    const url = URL.createObjectURL(state.enhancedBlob);
+    state.audio.src = url;
+    state.audio.play();
+    state.isPlaying = true;
+    updatePlayButton();
+    
+    elements.audioPlayer.classList.remove('hidden');
+    document.querySelector('.player-title').textContent = state.tracks[state.currentTrackIndex]?.name + ' (Enhanced)';
+    document.querySelector('.player-artist').textContent = 'Enhanced';
 }
 
 // =====================================================
