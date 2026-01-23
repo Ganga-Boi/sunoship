@@ -1,0 +1,21 @@
+{
+    "name": "SunoShip - Musik Distribution Prep",
+    "short_name": "SunoShip",
+    "description": "Forbered dine Suno.ai tracks til distribution på Spotify, Apple Music og mere",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#0d1117",
+    "theme_color": "#1DB954",
+    "orientation": "portrait-primary",
+    "icons": [
+        {
+            "src": "icon.svg",
+            "sizes": "any",
+            "type": "image/svg+xml",
+            "purpose": "any maskable"
+        }
+    ],
+    "categories": ["music", "utilities", "productivity"],
+    "lang": "da",
+    "dir": "ltr"
+}
