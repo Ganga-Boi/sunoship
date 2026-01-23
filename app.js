@@ -822,7 +822,7 @@ function initEnhanceStep() {
     console.log('Initializing enhance step');
     
     // Update track selector
-    const selector = elements.enhanceTrackSelector || document.getElementById('enhanceTrackSelector');
+    const selector = document.getElementById('enhanceTrackSelector');
     if (selector) {
         selector.innerHTML = state.tracks.map((track, index) => 
             `<option value="${index}">${escapeHtml(track.name)}</option>`
@@ -830,24 +830,35 @@ function initEnhanceStep() {
         selector.value = state.currentTrackIndex;
     }
     
-    // Update "before" stats
+    // Update "before" stats based on analysis
     const track = state.tracks[state.currentTrackIndex];
     if (track) {
         const beforeLufs = document.getElementById('beforeLufs');
-        const beforePeak = document.getElementById('beforePeak');
-        const beforeStereo = document.getElementById('beforeStereo');
+        const beforeStatus = document.getElementById('beforeStatus');
         
-        if (beforeLufs) beforeLufs.textContent = track.lufs ? `${track.lufs.toFixed(1)}` : '--';
-        if (beforePeak) beforePeak.textContent = track.peak ? `${track.peak.toFixed(1)} dB` : '--';
-        if (beforeStereo) beforeStereo.textContent = 'Mono/Stereo';
+        if (beforeLufs && track.lufs) {
+            beforeLufs.textContent = track.lufs.toFixed(1);
+            
+            // Update status badge
+            if (beforeStatus) {
+                if (track.lufs >= -15 && track.lufs <= -13) {
+                    beforeStatus.textContent = 'Perfekt!';
+                    beforeStatus.className = 'status-badge good';
+                } else if (track.lufs > -13) {
+                    beforeStatus.textContent = 'For højt';
+                    beforeStatus.className = 'status-badge bad';
+                } else {
+                    beforeStatus.textContent = 'For lavt';
+                    beforeStatus.className = 'status-badge bad';
+                }
+            }
+        }
     }
     
     // Reset enhanced state
     state.enhancedBlob = null;
     const playAfter = document.getElementById('playAfter');
-    const continueBtn = document.getElementById('continueToMetadata');
     if (playAfter) playAfter.disabled = true;
-    if (continueBtn) continueBtn.disabled = false;
     
     // Initialize controls (only once)
     if (!state.enhanceControlsInitialized) {
@@ -859,89 +870,58 @@ function initEnhanceStep() {
 }
 
 function initEnhanceControls() {
-    // Loudness slider
+    // Loudness slider (in advanced settings)
     const loudnessSlider = document.getElementById('loudnessSlider');
     const loudnessValue = document.getElementById('loudnessValue');
-    loudnessSlider?.addEventListener('input', (e) => {
-        const val = e.target.value;
-        loudnessValue.textContent = `${val} LUFS`;
-        state.enhanceSettings.loudness.target = parseFloat(val);
-    });
+    if (loudnessSlider) {
+        loudnessSlider.addEventListener('input', (e) => {
+            const val = e.target.value;
+            if (loudnessValue) loudnessValue.textContent = `${val} LUFS`;
+            state.enhanceSettings.loudness.target = parseFloat(val);
+        });
+    }
     
-    // Stereo slider
+    // Stereo slider (in advanced settings)
     const stereoSlider = document.getElementById('stereoSlider');
     const stereoValue = document.getElementById('stereoValue');
-    stereoSlider?.addEventListener('input', (e) => {
-        const val = e.target.value;
-        stereoValue.textContent = `${val}%`;
-        state.enhanceSettings.stereo.width = parseInt(val);
-    });
-    
-    // Limiter slider
-    const limiterSlider = document.getElementById('limiterSlider');
-    const limiterValue = document.getElementById('limiterValue');
-    limiterSlider?.addEventListener('input', (e) => {
-        const val = e.target.value;
-        limiterValue.textContent = `${val} dB`;
-        state.enhanceSettings.limiter.ceiling = parseFloat(val);
-    });
-    
-    // Checkboxes
-    document.getElementById('enableLoudness')?.addEventListener('change', (e) => {
-        state.enhanceSettings.loudness.enabled = e.target.checked;
-    });
-    document.getElementById('enableStereo')?.addEventListener('change', (e) => {
-        state.enhanceSettings.stereo.enabled = e.target.checked;
-    });
-    document.getElementById('enableEQ')?.addEventListener('change', (e) => {
-        state.enhanceSettings.eq.enabled = e.target.checked;
-    });
-    document.getElementById('enableLimiter')?.addEventListener('change', (e) => {
-        state.enhanceSettings.limiter.enabled = e.target.checked;
-    });
-    
-    // EQ options
-    document.getElementById('eqHighShelf')?.addEventListener('change', (e) => {
-        state.enhanceSettings.eq.highShelf = e.target.checked;
-    });
-    document.getElementById('eqLowCut')?.addEventListener('change', (e) => {
-        state.enhanceSettings.eq.lowCut = e.target.checked;
-    });
-    document.getElementById('eqPresence')?.addEventListener('change', (e) => {
-        state.enhanceSettings.eq.presence = e.target.checked;
-    });
+    if (stereoSlider) {
+        stereoSlider.addEventListener('input', (e) => {
+            const val = e.target.value;
+            if (stereoValue) stereoValue.textContent = `${val}%`;
+            state.enhanceSettings.stereo.width = parseInt(val);
+        });
+    }
     
     // Track selector change
-    elements.enhanceTrackSelector?.addEventListener('change', (e) => {
-        state.currentTrackIndex = parseInt(e.target.value);
-        initEnhanceStep();
-    });
+    const selector = document.getElementById('enhanceTrackSelector');
+    if (selector) {
+        selector.addEventListener('change', (e) => {
+            state.currentTrackIndex = parseInt(e.target.value);
+            initEnhanceStep();
+        });
+    }
     
-    // Process button
-    document.getElementById('processEnhance')?.addEventListener('click', processEnhancement);
+    // Process button - the main auto-enhance button
+    const processBtn = document.getElementById('processEnhance');
+    if (processBtn) {
+        processBtn.addEventListener('click', processEnhancement);
+    }
     
     // Play buttons
-    document.getElementById('playBefore')?.addEventListener('click', () => {
-        const track = state.tracks[state.currentTrackIndex];
-        if (track) {
-            playTrack(state.currentTrackIndex);
-        }
-    });
-    
-    document.getElementById('playAfter')?.addEventListener('click', () => {
-        if (state.enhancedBlob) {
-            playEnhancedAudio();
-        }
-    });
-    
-    // Export format toggle
-    document.querySelectorAll('.enhance-export-format .toggle-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.querySelectorAll('.enhance-export-format .toggle-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            state.exportFormat = btn.dataset.format;
+    const playBefore = document.getElementById('playBefore');
+    if (playBefore) {
+        playBefore.addEventListener('click', () => {
+            const track = state.tracks[state.currentTrackIndex];
+            if (track) playTrack(state.currentTrackIndex);
         });
-    });
+    }
+    
+    const playAfter = document.getElementById('playAfter');
+    if (playAfter) {
+        playAfter.addEventListener('click', () => {
+            if (state.enhancedBlob) playEnhancedAudio();
+        });
+    }
 }
 
 async function processEnhancement() {

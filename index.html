@@ -226,38 +226,28 @@
                 <div class="enhance-container">
                     <div class="enhance-header">
                         <h2>🎛️ Audio Enhancement</h2>
-                        <p class="enhance-subtitle">Gør din track radio-ready med et klik</p>
+                        <p class="enhance-subtitle">Én knap - professionel lyd</p>
                     </div>
 
                     <!-- Track selector for enhance -->
                     <div class="track-selector">
-                        <label>Vælg track:</label>
+                        <label>Track:</label>
                         <select id="enhanceTrackSelector" class="select-input"></select>
                     </div>
 
                     <!-- Before/After comparison -->
                     <div class="enhance-comparison">
                         <div class="comparison-card before">
-                            <h4>Før</h4>
+                            <h4>📉 Før</h4>
                             <div class="comparison-stats">
                                 <div class="stat-item">
-                                    <span class="stat-label">LUFS</span>
                                     <span class="stat-value" id="beforeLufs">--</span>
-                                </div>
-                                <div class="stat-item">
-                                    <span class="stat-label">Peak</span>
-                                    <span class="stat-value" id="beforePeak">--</span>
-                                </div>
-                                <div class="stat-item">
-                                    <span class="stat-label">Stereo</span>
-                                    <span class="stat-value" id="beforeStereo">--</span>
+                                    <span class="stat-label">LUFS</span>
                                 </div>
                             </div>
+                            <div class="status-badge bad" id="beforeStatus">For lavt</div>
                             <button class="btn-secondary btn-play" id="playBefore">
-                                <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
-                                    <polygon points="5 3 19 12 5 21 5 3"/>
-                                </svg>
-                                Afspil original
+                                ▶ Afspil original
                             </button>
                         </div>
                         <div class="comparison-arrow">
@@ -266,101 +256,38 @@
                             </svg>
                         </div>
                         <div class="comparison-card after">
-                            <h4>Efter</h4>
+                            <h4>📈 Efter</h4>
                             <div class="comparison-stats">
                                 <div class="stat-item">
-                                    <span class="stat-label">LUFS</span>
                                     <span class="stat-value" id="afterLufs">-14.0</span>
-                                </div>
-                                <div class="stat-item">
-                                    <span class="stat-label">Peak</span>
-                                    <span class="stat-value" id="afterPeak">-1.0 dB</span>
-                                </div>
-                                <div class="stat-item">
-                                    <span class="stat-label">Stereo</span>
-                                    <span class="stat-value" id="afterStereo">Wide</span>
+                                    <span class="stat-label">LUFS</span>
                                 </div>
                             </div>
+                            <div class="status-badge good">Spotify-klar</div>
                             <button class="btn-secondary btn-play" id="playAfter" disabled>
-                                <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
-                                    <polygon points="5 3 19 12 5 21 5 3"/>
-                                </svg>
-                                Afspil enhanced
+                                ▶ Afspil enhanced
                             </button>
                         </div>
                     </div>
 
-                    <!-- Enhancement controls -->
-                    <div class="enhance-controls">
-                        <h3>Enhancement Settings</h3>
-                        
-                        <div class="control-group">
-                            <div class="control-header">
-                                <label>
-                                    <input type="checkbox" id="enableLoudness" checked>
-                                    🔊 Loudness Normalisering
-                                </label>
-                                <span class="control-value" id="loudnessValue">-14 LUFS</span>
-                            </div>
-                            <input type="range" id="loudnessSlider" min="-20" max="-8" value="-14" step="0.5" class="slider">
-                            <p class="control-hint">Spotify/Apple Music standard: -14 LUFS</p>
-                        </div>
-
-                        <div class="control-group">
-                            <div class="control-header">
-                                <label>
-                                    <input type="checkbox" id="enableStereo" checked>
-                                    🎧 Stereo Widening
-                                </label>
-                                <span class="control-value" id="stereoValue">25%</span>
-                            </div>
-                            <input type="range" id="stereoSlider" min="0" max="100" value="25" class="slider">
-                            <p class="control-hint">Gør lydbilledet bredere og mere immersivt</p>
-                        </div>
-
-                        <div class="control-group">
-                            <div class="control-header">
-                                <label>
-                                    <input type="checkbox" id="enableEQ" checked>
-                                    🎚️ EQ Polish
-                                </label>
-                            </div>
-                            <div class="eq-options">
-                                <label class="eq-option">
-                                    <input type="checkbox" id="eqHighShelf" checked>
-                                    High Shelf (+2dB @ 10kHz) - Klarhed
-                                </label>
-                                <label class="eq-option">
-                                    <input type="checkbox" id="eqLowCut" checked>
-                                    Low Cut (80Hz) - Fjern mudder
-                                </label>
-                                <label class="eq-option">
-                                    <input type="checkbox" id="eqPresence" checked>
-                                    Presence Boost (+1.5dB @ 3kHz)
-                                </label>
-                            </div>
-                        </div>
-
-                        <div class="control-group">
-                            <div class="control-header">
-                                <label>
-                                    <input type="checkbox" id="enableLimiter" checked>
-                                    🛡️ Soft Limiter
-                                </label>
-                                <span class="control-value" id="limiterValue">-1.0 dB</span>
-                            </div>
-                            <input type="range" id="limiterSlider" min="-3" max="0" value="-1" step="0.1" class="slider">
-                            <p class="control-hint">Forhindrer clipping, giver mere punch</p>
-                        </div>
+                    <!-- What will be applied -->
+                    <div class="auto-enhance-info">
+                        <h4>🤖 Auto-Enhancement anvender:</h4>
+                        <ul class="enhance-list">
+                            <li>✓ Loudness → -14 LUFS (Spotify standard)</li>
+                            <li>✓ Stereo widening for bredere lyd</li>
+                            <li>✓ EQ polish (klarhed + fjern mudder)</li>
+                            <li>✓ Limiter (forhindrer clipping)</li>
+                        </ul>
                     </div>
 
-                    <!-- Process button -->
+                    <!-- Big Process button -->
                     <div class="enhance-actions">
-                        <button id="processEnhance" class="btn-primary btn-large">
+                        <button id="processEnhance" class="btn-primary btn-huge">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
                             </svg>
-                            Enhance Track
+                            Auto-Enhance
                         </button>
                     </div>
 
@@ -375,30 +302,32 @@
                         </div>
                     </div>
 
-                    <!-- Export format -->
-                    <div class="enhance-export-format">
-                        <label>Export format:</label>
-                        <div class="toggle-group">
-                            <button type="button" class="toggle-btn active" data-format="wav">WAV (Lossless)</button>
-                            <button type="button" class="toggle-btn" data-format="mp3">MP3 (320kbps)</button>
+                    <!-- Advanced toggle (hidden by default) -->
+                    <details class="advanced-settings">
+                        <summary>⚙️ Avancerede indstillinger</summary>
+                        <div class="advanced-content">
+                            <div class="control-group">
+                                <label>Target LUFS</label>
+                                <input type="range" id="loudnessSlider" min="-20" max="-8" value="-14" step="0.5" class="slider">
+                                <span class="control-value" id="loudnessValue">-14 LUFS</span>
+                            </div>
+                            <div class="control-group">
+                                <label>Stereo Width</label>
+                                <input type="range" id="stereoSlider" min="0" max="100" value="25" class="slider">
+                                <span class="control-value" id="stereoValue">25%</span>
+                            </div>
                         </div>
-                    </div>
+                    </details>
 
                     <div class="step-actions">
                         <button id="backToUploadFromEnhance" class="btn-ghost">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M19 12H5M12 19l-7-7 7-7"/>
-                            </svg>
-                            Tilbage
+                            ← Tilbage
                         </button>
                         <button id="skipEnhance" class="btn-ghost">
-                            Skip enhancement
+                            Skip
                         </button>
-                        <button id="continueToMetadata" class="btn-primary" disabled>
-                            Fortsæt til Metadata
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M5 12h14M12 5l7 7-7 7"/>
-                            </svg>
+                        <button id="continueToMetadata" class="btn-primary">
+                            Fortsæt →
                         </button>
                     </div>
                 </div>
