@@ -943,13 +943,30 @@ function initEnhanceControls() {
 }
 
 async function processEnhancement() {
+    console.log('Starting enhancement...');
+    
     const track = state.tracks[state.currentTrackIndex];
-    if (!track) return;
+    if (!track) {
+        showToast('Ingen track valgt', 'error');
+        return;
+    }
     
     // Show progress
     const progressEl = document.getElementById('enhanceProgress');
     if (progressEl) progressEl.classList.remove('hidden');
-    updateProgress(0, 'Forbereder...');
+    
+    const updateUI = (percent, text) => {
+        try {
+            const bar = document.getElementById('enhanceProgressBar');
+            const pct = document.getElementById('progressPercent');
+            const txt = document.getElementById('progressText');
+            if (bar) bar.style.width = `${percent}%`;
+            if (pct) pct.textContent = `${percent}%`;
+            if (txt) txt.textContent = text;
+        } catch(e) { console.log('UI update error:', e); }
+    };
+    
+    updateUI(0, 'Forbereder...');
     
     try {
         // Ensure AudioContext
@@ -960,13 +977,15 @@ async function processEnhancement() {
             await state.audioContext.resume();
         }
         
-        updateProgress(10, 'Læser audio...');
+        updateUI(10, 'Læser audio...');
         
         // Decode audio
         const arrayBuffer = await track.file.arrayBuffer();
         const audioBuffer = await state.audioContext.decodeAudioData(arrayBuffer.slice(0));
         
-        updateProgress(20, 'Analyserer...');
+        console.log('Audio decoded:', audioBuffer.numberOfChannels, 'channels,', audioBuffer.sampleRate, 'Hz');
+        
+        updateUI(20, 'Anvender EQ...');
         
         // Create offline context for processing
         const offlineCtx = new OfflineAudioContext(
@@ -981,43 +1000,30 @@ async function processEnhancement() {
         
         let currentNode = source;
         
-        // Apply EQ if enabled
-        if (state.enhanceSettings.eq.enabled) {
-            updateProgress(30, 'Anvender EQ...');
-            
-            // Low cut (high-pass filter)
-            if (state.enhanceSettings.eq.lowCut) {
-                const highpass = offlineCtx.createBiquadFilter();
-                highpass.type = 'highpass';
-                highpass.frequency.value = 80;
-                highpass.Q.value = 0.7;
-                currentNode.connect(highpass);
-                currentNode = highpass;
-            }
-            
-            // Presence boost
-            if (state.enhanceSettings.eq.presence) {
-                const presence = offlineCtx.createBiquadFilter();
-                presence.type = 'peaking';
-                presence.frequency.value = 3000;
-                presence.gain.value = 1.5;
-                presence.Q.value = 1;
-                currentNode.connect(presence);
-                currentNode = presence;
-            }
-            
-            // High shelf
-            if (state.enhanceSettings.eq.highShelf) {
-                const highShelf = offlineCtx.createBiquadFilter();
-                highShelf.type = 'highshelf';
-                highShelf.frequency.value = 10000;
-                highShelf.gain.value = 2;
-                currentNode.connect(highShelf);
-                currentNode = highShelf;
-            }
-        }
+        // Apply EQ (always on in auto mode)
+        const highpass = offlineCtx.createBiquadFilter();
+        highpass.type = 'highpass';
+        highpass.frequency.value = 80;
+        highpass.Q.value = 0.7;
+        currentNode.connect(highpass);
+        currentNode = highpass;
         
-        updateProgress(50, 'Renderer audio...');
+        const presence = offlineCtx.createBiquadFilter();
+        presence.type = 'peaking';
+        presence.frequency.value = 3000;
+        presence.gain.value = 1.5;
+        presence.Q.value = 1;
+        currentNode.connect(presence);
+        currentNode = presence;
+        
+        const highShelf = offlineCtx.createBiquadFilter();
+        highShelf.type = 'highshelf';
+        highShelf.frequency.value = 10000;
+        highShelf.gain.value = 2;
+        currentNode.connect(highShelf);
+        currentNode = highShelf;
+        
+        updateUI(40, 'Renderer audio...');
         
         // Connect to destination
         currentNode.connect(offlineCtx.destination);
@@ -1026,43 +1032,53 @@ async function processEnhancement() {
         source.start(0);
         const renderedBuffer = await offlineCtx.startRendering();
         
-        updateProgress(60, 'Anvender loudness normalisering...');
+        console.log('EQ applied');
         
-        // Apply loudness normalization and limiting in a second pass
-        let processedBuffer = renderedBuffer;
+        updateUI(60, 'Anvender loudness...');
         
-        if (state.enhanceSettings.loudness.enabled || state.enhanceSettings.limiter.enabled) {
-            processedBuffer = await applyLoudnessAndLimiter(renderedBuffer);
-        }
+        // Apply loudness normalization
+        let processedBuffer = await applyLoudnessAndLimiter(renderedBuffer);
         
-        // Apply stereo widening
-        if (state.enhanceSettings.stereo.enabled && processedBuffer.numberOfChannels >= 2) {
-            updateProgress(75, 'Anvender stereo widening...');
+        console.log('Loudness applied');
+        
+        // Apply stereo widening if stereo
+        if (processedBuffer.numberOfChannels >= 2) {
+            updateUI(75, 'Anvender stereo...');
             processedBuffer = applyStereoWidening(processedBuffer);
+            console.log('Stereo widening applied');
         }
         
-        updateProgress(85, 'Eksporterer...');
+        updateUI(85, 'Eksporterer...');
         
         // Convert to WAV
         const blob = audioBufferToWav(processedBuffer);
         
-        state.enhancedBlob = blob;
+        console.log('WAV created, size:', blob.size);
         
-        // Update track with enhanced version
+        state.enhancedBlob = blob;
         track.enhancedFile = blob;
         track.enhanced = true;
         
         // Calculate new LUFS
-        const newLufs = await calculateLUFS(processedBuffer);
+        let newLufs = -14;
+        try {
+            newLufs = await calculateLUFS(processedBuffer);
+        } catch(e) {
+            console.log('LUFS calc error:', e);
+        }
         
-        updateProgress(100, 'Færdig!');
+        updateUI(100, 'Færdig!');
         
-        // Update UI - with null checks
-        const afterLufs = document.getElementById('afterLufs');
-        if (afterLufs) afterLufs.textContent = newLufs.toFixed(1);
+        // Update UI safely
+        try {
+            const afterLufs = document.getElementById('afterLufs');
+            if (afterLufs) afterLufs.textContent = newLufs.toFixed(1);
+        } catch(e) { console.log('afterLufs error:', e); }
         
-        const playAfter = document.getElementById('playAfter');
-        if (playAfter) playAfter.disabled = false;
+        try {
+            const playAfter = document.getElementById('playAfter');
+            if (playAfter) playAfter.disabled = false;
+        } catch(e) { console.log('playAfter error:', e); }
         
         showToast('Audio enhancement færdig! 🎉', 'success');
         
@@ -1073,8 +1089,7 @@ async function processEnhancement() {
         
     } catch (error) {
         console.error('Enhancement error:', error);
-        showToast('Fejl under enhancement: ' + error.message, 'error');
-        const progressEl = document.getElementById('enhanceProgress');
+        showToast('Fejl: ' + (error.message || 'Ukendt fejl'), 'error');
         if (progressEl) progressEl.classList.add('hidden');
     }
 }
@@ -1631,6 +1646,12 @@ function loadScript(src) {
 
 // Toast notifications
 function showToast(message, type = 'info') {
+    const toastsContainer = elements.toasts || document.getElementById('toasts');
+    if (!toastsContainer) {
+        console.log('Toast:', type, message);
+        return;
+    }
+    
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
     
@@ -1643,7 +1664,7 @@ function showToast(message, type = 'info') {
     
     toast.innerHTML = `
         <span class="toast-icon">${icons[type] || icons.info}</span>
-        <span class="toast-message">${escapeHtml(message)}</span>
+        <span class="toast-message">${message}</span>
         <button class="toast-close" onclick="this.parentElement.remove()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
                 <line x1="18" y1="6" x2="6" y2="18"/>
@@ -1652,12 +1673,14 @@ function showToast(message, type = 'info') {
         </button>
     `;
     
-    elements.toasts.appendChild(toast);
+    toastsContainer.appendChild(toast);
     
     // Auto remove after 4 seconds
     setTimeout(() => {
-        toast.style.animation = 'slideInRight 0.3s ease reverse';
-        setTimeout(() => toast.remove(), 300);
+        try {
+            toast.style.animation = 'slideInRight 0.3s ease reverse';
+            setTimeout(() => toast.remove(), 300);
+        } catch(e) {}
     }, 4000);
 }
 
