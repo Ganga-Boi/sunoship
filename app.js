@@ -108,9 +108,16 @@ function initNavigation() {
     document.getElementById('backToArtwork')?.addEventListener('click', () => goToStep('artwork'));
     
     // Re-analyze button
-    document.getElementById('reanalyzeBtn')?.addEventListener('click', () => {
+    document.getElementById('reanalyzeBtn')?.addEventListener('click', async () => {
         const track = state.tracks[state.currentTrackIndex];
         if (track) {
+            // Ensure AudioContext is created on user gesture
+            if (!state.audioContext) {
+                state.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (state.audioContext.state === 'suspended') {
+                await state.audioContext.resume();
+            }
             analyzeTrack(track);
         }
     });
@@ -720,6 +727,14 @@ function playTrack(index) {
     
     state.currentTrackIndex = index;
     
+    // Initialize AudioContext on user interaction (helps with analysis later)
+    if (!state.audioContext) {
+        state.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (state.audioContext.state === 'suspended') {
+        state.audioContext.resume();
+    }
+    
     // Update player UI
     elements.audioPlayer.classList.remove('hidden');
     document.querySelector('.player-title').textContent = track.metadata.title || track.name;
@@ -761,19 +776,30 @@ async function analyzeTrack(track) {
     // Reset UI
     resetAnalysisUI();
     
-    // Initialize AudioContext if needed
-    if (!state.audioContext) {
-        state.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    }
-    
     try {
+        // Initialize AudioContext with user gesture handling
+        if (!state.audioContext) {
+            state.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        
+        // Resume if suspended (browser autoplay policy)
+        if (state.audioContext.state === 'suspended') {
+            await state.audioContext.resume();
+        }
+        
         // Read file as ArrayBuffer
         const arrayBuffer = await track.file.arrayBuffer();
         
-        // Decode audio data
-        const audioBuffer = await state.audioContext.decodeAudioData(arrayBuffer);
+        // Decode audio data with error handling
+        let audioBuffer;
+        try {
+            audioBuffer = await state.audioContext.decodeAudioData(arrayBuffer.slice(0));
+        } catch (decodeError) {
+            console.error('Decode error:', decodeError);
+            throw new Error('Kunne ikke decode audio fil. Prøv et andet format.');
+        }
         
-        // Run both analyses in parallel
+        // Run both analyses
         const [bpm, lufs] = await Promise.all([
             detectBPM(audioBuffer),
             calculateLUFS(audioBuffer)
@@ -793,12 +819,14 @@ async function analyzeTrack(track) {
         
     } catch (error) {
         console.error('Audio analysis error:', error);
-        showToast('Kunne ikke analysere audio', 'error');
+        showToast(error.message || 'Kunne ikke analysere audio', 'error');
         
         // Mark as analyzed but with no data
         track.analyzed = true;
         elements.bpmStatus.textContent = 'Fejl';
         elements.lufsStatus.textContent = 'Fejl';
+        document.querySelector('.bpm-card')?.classList.remove('analyzing');
+        document.querySelector('.loudness-card')?.classList.remove('analyzing');
     }
 }
 
