@@ -545,16 +545,23 @@ function handleArtwork(file) {
         resizeImage(e.target.result, 3000, 3000, (resizedData) => {
             state.coverImageData = resizedData;
             
-            elements.coverPreview.innerHTML = `<img src="${resizedData}" alt="Cover art">`;
-            elements.coverPreview.classList.add('has-image');
+            if (elements.coverPreview) {
+                elements.coverPreview.innerHTML = `<img src="${resizedData}" alt="Cover art">`;
+                elements.coverPreview.classList.add('has-image');
+            }
             
-            document.getElementById('coverStatus').textContent = 'Cover uploadet ✓';
+            const coverStatus = document.getElementById('coverStatus');
+            if (coverStatus) coverStatus.textContent = 'Cover uploadet ✓';
             
             // Show mockup
             const mockup = document.getElementById('albumMockup');
-            mockup.classList.remove('hidden');
-            document.getElementById('mockupSpotify').src = resizedData;
-            document.getElementById('mockupApple').src = resizedData;
+            if (mockup) {
+                mockup.classList.remove('hidden');
+                const mockupSpotify = document.getElementById('mockupSpotify');
+                const mockupApple = document.getElementById('mockupApple');
+                if (mockupSpotify) mockupSpotify.src = resizedData;
+                if (mockupApple) mockupApple.src = resizedData;
+            }
             
             showToast('Cover art uploadet og resized til 3000x3000px', 'success');
         });
@@ -605,14 +612,19 @@ function updateExportSummary() {
     if (!track) return;
     
     // Update summary card
-    document.getElementById('summaryTitle').textContent = track.metadata.title || 'Untitled';
-    document.getElementById('summaryArtist').textContent = track.metadata.artist || 'Unknown Artist';
-    document.getElementById('summaryGenre').textContent = track.metadata.genre || 'Genre';
-    document.getElementById('summaryYear').textContent = track.metadata.copyrightYear || new Date().getFullYear();
+    const summaryTitle = document.getElementById('summaryTitle');
+    const summaryArtist = document.getElementById('summaryArtist');
+    const summaryGenre = document.getElementById('summaryGenre');
+    const summaryYear = document.getElementById('summaryYear');
+    
+    if (summaryTitle) summaryTitle.textContent = track.metadata.title || 'Untitled';
+    if (summaryArtist) summaryArtist.textContent = track.metadata.artist || 'Unknown Artist';
+    if (summaryGenre) summaryGenre.textContent = track.metadata.genre || 'Genre';
+    if (summaryYear) summaryYear.textContent = track.metadata.copyrightYear || new Date().getFullYear();
     
     // Update cover
     const summaryCover = document.getElementById('summaryCover');
-    if (state.coverImageData) {
+    if (summaryCover && state.coverImageData) {
         summaryCover.innerHTML = `<img src="${state.coverImageData}" alt="Cover">`;
     }
     
@@ -623,11 +635,11 @@ function updateExportSummary() {
     const checkArtwork = document.getElementById('checkArtwork');
     const checkAnalysis = document.getElementById('checkAnalysis');
     
-    checkAudio.classList.toggle('complete', state.tracks.length > 0);
-    checkEnhanced?.classList.toggle('complete', track.enhanced === true);
-    checkMetadata.classList.toggle('complete', track.metadata.title && track.metadata.artist);
-    checkArtwork.classList.toggle('complete', state.coverImageData !== null);
-    checkAnalysis?.classList.toggle('complete', track.analyzed && track.bpm !== null);
+    if (checkAudio) checkAudio.classList.toggle('complete', state.tracks.length > 0);
+    if (checkEnhanced) checkEnhanced.classList.toggle('complete', track.enhanced === true);
+    if (checkMetadata) checkMetadata.classList.toggle('complete', track.metadata.title && track.metadata.artist);
+    if (checkArtwork) checkArtwork.classList.toggle('complete', state.coverImageData !== null);
+    if (checkAnalysis) checkAnalysis.classList.toggle('complete', track.analyzed && track.bpm !== null);
 }
 
 async function downloadPackage() {
@@ -637,7 +649,8 @@ async function downloadPackage() {
         return;
     }
     
-    const format = document.querySelector('input[name="exportFormat"]:checked').value;
+    const formatEl = document.querySelector('input[name="exportFormat"]:checked');
+    const format = formatEl ? formatEl.value : 'zip';
     
     showToast('Forbereder download...', 'success');
     
@@ -747,12 +760,15 @@ function initAudioPlayer() {
     
     state.audio.addEventListener('timeupdate', () => {
         const progress = (state.audio.currentTime / state.audio.duration) * 100;
-        document.getElementById('progressFill').style.width = `${progress}%`;
-        document.getElementById('currentTime').textContent = formatDuration(state.audio.currentTime);
+        const progressFill = document.getElementById('progressFill');
+        const currentTime = document.getElementById('currentTime');
+        if (progressFill) progressFill.style.width = `${progress}%`;
+        if (currentTime) currentTime.textContent = formatDuration(state.audio.currentTime);
     });
     
     state.audio.addEventListener('loadedmetadata', () => {
-        document.getElementById('duration').textContent = formatDuration(state.audio.duration);
+        const duration = document.getElementById('duration');
+        if (duration) duration.textContent = formatDuration(state.audio.duration);
     });
     
     state.audio.addEventListener('ended', () => {
@@ -785,9 +801,11 @@ function playTrack(index) {
     }
     
     // Update player UI
-    elements.audioPlayer.classList.remove('hidden');
-    document.querySelector('.player-title').textContent = track.metadata.title || track.name;
-    document.querySelector('.player-artist').textContent = track.metadata.artist || 'Unknown';
+    if (elements.audioPlayer) elements.audioPlayer.classList.remove('hidden');
+    const playerTitle = document.querySelector('.player-title');
+    const playerArtist = document.querySelector('.player-artist');
+    if (playerTitle) playerTitle.textContent = track.metadata.title || track.name;
+    if (playerArtist) playerArtist.textContent = track.metadata.artist || 'Unknown';
     
     // Play audio
     state.audio.src = URL.createObjectURL(track.file);
@@ -1220,9 +1238,11 @@ function playEnhancedAudio() {
     state.isPlaying = true;
     updatePlayButton();
     
-    elements.audioPlayer.classList.remove('hidden');
-    document.querySelector('.player-title').textContent = state.tracks[state.currentTrackIndex]?.name + ' (Enhanced)';
-    document.querySelector('.player-artist').textContent = 'Enhanced';
+    if (elements.audioPlayer) elements.audioPlayer.classList.remove('hidden');
+    const playerTitle = document.querySelector('.player-title');
+    const playerArtist = document.querySelector('.player-artist');
+    if (playerTitle) playerTitle.textContent = state.tracks[state.currentTrackIndex]?.name + ' (Enhanced)';
+    if (playerArtist) playerArtist.textContent = 'Enhanced';
 }
 
 // =====================================================
