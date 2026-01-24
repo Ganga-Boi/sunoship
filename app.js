@@ -1,64 +1,100 @@
-(() => {
-  const elements = {};
+const audioInput = document.getElementById('audioInput');
+const enhanceBtn = document.getElementById('enhanceBtn');
 
-  function initElements() {
-    elements.processEnhance = document.getElementById('processEnhance');
-    elements.enhanceProgress = document.getElementById('enhanceProgress');
-    elements.progressText = document.getElementById('progressText');
-    elements.progressPercent = document.getElementById('progressPercent');
-    elements.enhanceProgressBar = document.getElementById('enhanceProgressBar');
-    elements.toasts = document.getElementById('toasts');
+const progressBox = document.getElementById('enhanceProgress');
+const progressText = document.getElementById('progressText');
+const progressPercent = document.getElementById('progressPercent');
+const progressBar = document.getElementById('enhanceProgressBar');
+
+const audioPlayer = document.getElementById('audioPlayer');
+
+let originalBuffer = null;
+
+audioInput.addEventListener('change', async () => {
+  const file = audioInput.files[0];
+  if (!file) return;
+
+  const ctx = new AudioContext();
+  const arrayBuffer = await file.arrayBuffer();
+  originalBuffer = await ctx.decodeAudioData(arrayBuffer);
+
+  audioPlayer.src = URL.createObjectURL(file);
+});
+
+enhanceBtn.addEventListener('click', async () => {
+  if (!originalBuffer) {
+    alert('Upload en lydfil først');
+    return;
   }
 
-  function showToast(msg) {
-    if (!elements.toasts) return;
-    const t = document.createElement('div');
-    t.className = 'toast error';
-    t.textContent = msg;
-    elements.toasts.appendChild(t);
-    setTimeout(() => t.remove(), 4000);
-  }
+  progressBox.classList.remove('hidden');
+  updateProgress('Starter enhancement…', 0);
 
-  function safeText(el, txt) {
-    if (el) el.textContent = txt;
-  }
+  const sampleRate = originalBuffer.sampleRate;
+  const offlineCtx = new OfflineAudioContext(
+    originalBuffer.numberOfChannels,
+    originalBuffer.length,
+    sampleRate
+  );
 
-  function safeStyle(el, prop, val) {
-    if (el) el.style[prop] = val;
-  }
+  const source = offlineCtx.createBufferSource();
+  source.buffer = originalBuffer;
 
-  function processEnhancement() {
-    if (!elements.enhanceProgress) return;
+  const gain = offlineCtx.createGain();
+  gain.gain.value = 2.5; // ≈ +8 dB (simpel loudness-løft)
 
-    elements.enhanceProgress.classList.remove('hidden');
-    safeText(elements.progressText, 'Processerer...');
-    safeText(elements.progressPercent, '0%');
-    safeStyle(elements.enhanceProgressBar, 'width', '0%');
+  source.connect(gain);
+  gain.connect(offlineCtx.destination);
+  source.start();
 
-    let p = 0;
-    const iv = setInterval(() => {
-      p += 10;
-      safeText(elements.progressPercent, `${p}%`);
-      safeStyle(elements.enhanceProgressBar, 'width', `${p}%`);
-      if (p >= 100) {
-        clearInterval(iv);
-        safeText(elements.progressText, 'Færdig');
-      }
-    }, 200);
-  }
+  updateProgress('Renderer audio…', 40);
 
-  document.addEventListener('DOMContentLoaded', () => {
-    initElements();
+  const renderedBuffer = await offlineCtx.startRendering();
 
-    if (elements.processEnhance) {
-      elements.processEnhance.addEventListener('click', () => {
-        try {
-          processEnhancement();
-        } catch (e) {
-          showToast('Fejl under enhancement');
-          console.error(e);
-        }
-      });
+  updateProgress('Eksporterer…', 80);
+
+  const wavBlob = bufferToWav(renderedBuffer);
+  audioPlayer.src = URL.createObjectURL(wavBlob);
+
+  updateProgress('Færdig', 100);
+});
+
+function updateProgress(text, percent) {
+  progressText.textContent = text;
+  progressPercent.textContent = percent + '%';
+  progressBar.style.width = percent + '%';
+}
+
+/* === WAV EXPORT === */
+function bufferToWav(buffer) {
+  const numChannels = buffer.numberOfChannels;
+  const length = buffer.length * numChannels * 2 + 44;
+  const arrayBuffer = new ArrayBuffer(length);
+  const view = new DataView(arrayBuffer);
+
+  let offset = 0;
+  const writeString = s => { for (let i = 0; i < s.length; i++) view.setUint8(offset++, s.charCodeAt(i)); };
+
+  writeString('RIFF');
+  view.setUint32(offset, 36 + buffer.length * 2, true); offset += 4;
+  writeString('WAVEfmt ');
+  view.setUint32(offset, 16, true); offset += 4;
+  view.setUint16(offset, 1, true); offset += 2;
+  view.setUint16(offset, numChannels, true); offset += 2;
+  view.setUint32(offset, buffer.sampleRate, true); offset += 4;
+  view.setUint32(offset, buffer.sampleRate * numChannels * 2, true); offset += 4;
+  view.setUint16(offset, numChannels * 2, true); offset += 2;
+  view.setUint16(offset, 16, true); offset += 2;
+  writeString('data');
+  view.setUint32(offset, buffer.length * 2, true); offset += 4;
+
+  for (let i = 0; i < buffer.length; i++) {
+    for (let ch = 0; ch < numChannels; ch++) {
+      const sample = buffer.getChannelData(ch)[i];
+      view.setInt16(offset, sample * 0x7fff, true);
+      offset += 2;
     }
-  });
-})();
+  }
+
+  return new Blob([arrayBuffer], { type: 'audio/wav' });
+}
