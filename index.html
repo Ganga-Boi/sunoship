@@ -3,33 +3,35 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>SunoShip – Musik Distribution</title>
-  <link rel="stylesheet" href="style.css" />
+  <title>SunoShip - Musik Distribution Prep</title>
+  <link rel="stylesheet" href="style.css"/>
+  <link rel="manifest" href="manifest.json"/>
+  <link rel="icon" href="icon.svg" type="image/svg+xml"/>
+  <meta name="theme-color" content="#0d1117"/>
 </head>
 <body>
+  <main id="app" class="app">
+    <section id="step-enhance" class="step active">
+      <div class="step-content">
+        <h1>Audio Enhancement</h1>
 
-  <main id="app">
+        <button id="processEnhance" class="btn-primary">Auto-Enhance</button>
 
-    <h1>Audio Enhancement</h1>
-    <p>Én knap – professionel lyd</p>
-
-    <button id="enhanceBtn">Auto-Enhance</button>
-
-    <!-- Progress -->
-    <div id="enhanceProgress" class="hidden">
-      <span id="progressText">Klar…</span>
-      <span id="progressPercent">0%</span>
-      <div class="progress-bar">
-        <div id="enhanceProgressBar"></div>
+        <div id="enhanceProgress" class="enhance-progress hidden">
+          <div class="progress-label">
+            <span id="progressText">Processerer...</span>
+            <span id="progressPercent">0%</span>
+          </div>
+          <div class="progress-bar-container">
+            <div class="progress-bar-fill" id="enhanceProgressBar"></div>
+          </div>
+        </div>
       </div>
-    </div>
-
-    <!-- Error -->
-    <div id="errorBox" class="error hidden"></div>
-
+    </section>
   </main>
 
-  <!-- VIGTIGT: kun én JS -->
+  <div id="toasts"></div>
+
   <script src="app.js"></script>
 </body>
 </html>
