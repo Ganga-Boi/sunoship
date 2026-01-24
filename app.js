@@ -1,56 +1,64 @@
 (() => {
-  'use strict';
-
-  const el = {};
+  const elements = {};
 
   function initElements() {
-    el.enhanceBtn = document.getElementById('enhanceBtn');
-    el.enhanceProgress = document.getElementById('enhanceProgress');
-    el.progressText = document.getElementById('progressText');
-    el.progressPercent = document.getElementById('progressPercent');
-    el.progressBar = document.getElementById('enhanceProgressBar');
-    el.errorBox = document.getElementById('errorBox');
+    elements.processEnhance = document.getElementById('processEnhance');
+    elements.enhanceProgress = document.getElementById('enhanceProgress');
+    elements.progressText = document.getElementById('progressText');
+    elements.progressPercent = document.getElementById('progressPercent');
+    elements.enhanceProgressBar = document.getElementById('enhanceProgressBar');
+    elements.toasts = document.getElementById('toasts');
   }
 
-  function safeText(node, value) {
-    if (node) node.textContent = value;
+  function showToast(msg) {
+    if (!elements.toasts) return;
+    const t = document.createElement('div');
+    t.className = 'toast error';
+    t.textContent = msg;
+    elements.toasts.appendChild(t);
+    setTimeout(() => t.remove(), 4000);
   }
 
-  function showError(msg) {
-    if (!el.errorBox) return;
-    el.errorBox.textContent = msg;
-    el.errorBox.classList.remove('hidden');
+  function safeText(el, txt) {
+    if (el) el.textContent = txt;
   }
 
-  function simulateEnhancement() {
-    if (!el.enhanceProgress) return;
+  function safeStyle(el, prop, val) {
+    if (el) el.style[prop] = val;
+  }
 
-    el.enhanceProgress.classList.remove('hidden');
-    safeText(el.progressText, 'Processerer…');
-    safeText(el.progressPercent, '0%');
-    if (el.progressBar) el.progressBar.style.width = '0%';
+  function processEnhancement() {
+    if (!elements.enhanceProgress) return;
+
+    elements.enhanceProgress.classList.remove('hidden');
+    safeText(elements.progressText, 'Processerer...');
+    safeText(elements.progressPercent, '0%');
+    safeStyle(elements.enhanceProgressBar, 'width', '0%');
 
     let p = 0;
-    const timer = setInterval(() => {
+    const iv = setInterval(() => {
       p += 10;
-      safeText(el.progressPercent, `${p}%`);
-      if (el.progressBar) el.progressBar.style.width = `${p}%`;
-
+      safeText(elements.progressPercent, `${p}%`);
+      safeStyle(elements.enhanceProgressBar, 'width', `${p}%`);
       if (p >= 100) {
-        clearInterval(timer);
-        safeText(el.progressText, 'Færdig');
+        clearInterval(iv);
+        safeText(elements.progressText, 'Færdig');
       }
-    }, 300);
-  }
-
-  function bindEvents() {
-    if (!el.enhanceBtn) return;
-    el.enhanceBtn.addEventListener('click', simulateEnhancement);
+    }, 200);
   }
 
   document.addEventListener('DOMContentLoaded', () => {
     initElements();
-    bindEvents();
-  });
 
+    if (elements.processEnhance) {
+      elements.processEnhance.addEventListener('click', () => {
+        try {
+          processEnhancement();
+        } catch (e) {
+          showToast('Fejl under enhancement');
+          console.error(e);
+        }
+      });
+    }
+  });
 })();
