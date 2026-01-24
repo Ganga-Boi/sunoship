@@ -134,12 +134,19 @@ function handleFiles(files) {
     if (!audioFiles.length) return;
 
     audioFiles.forEach(file => {
+        const titleFromFile = file.name.replace(/\.[^/.]+$/, '');
         state.tracks.push({
             file,
-            name: file.name.replace(/\.[^/.]+$/, ''),
+            name: titleFromFile,
             enhanced: false,
             enhancedFile: null,
-            metadata: { title: file.name.replace(/\.[^/.]+$/, ''), artist: '', album: '', genre: '' }
+            metadata: { 
+                title: titleFromFile, 
+                artist: 'Rasta-Jah', 
+                genre: '', 
+                releaseDate: '',
+                copyrightYear: new Date().getFullYear()
+            }
         });
     });
 
