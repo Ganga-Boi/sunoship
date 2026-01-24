@@ -1,7 +1,7 @@
 /* =====================================================
-   SUNOSHIP v2.2 - Bulletproof Edition
+   SUNOSHIP v2.3 - DOM Fixed Edition
    ===================================================== */
-console.log('%c🚢 SunoShip v2.2', 'color: #1DB954; font-size: 16px; font-weight: bold');
+console.log('%c🚢 SunoShip v2.3', 'color: #1DB954; font-size: 16px; font-weight: bold');
 
 const state = {
     tracks: [],
@@ -34,7 +34,14 @@ function initElements() {
     elements.coverInput = document.getElementById('coverInput');
     elements.coverPreview = document.getElementById('coverPreview');
     elements.toasts = document.getElementById('toasts');
-    console.log('Elements initialized, toasts:', elements.toasts);
+    
+    // Enhance progress elements
+    elements.progressText = document.getElementById('progressText');
+    elements.progressPercent = document.getElementById('progressPercent');
+    elements.enhanceProgressBar = document.getElementById('enhanceProgressBar');
+    elements.enhanceProgress = document.getElementById('enhanceProgress');
+    
+    console.log('Elements initialized');
 }
 
 function initApp() {
@@ -273,11 +280,24 @@ async function processEnhancement() {
         return;
     }
     
+    // Bulletproof: check DOM elements exist
+    if (!elements.progressText || !elements.progressPercent || !elements.enhanceProgressBar) {
+        console.error('Enhance DOM elements mangler');
+        showToast('Enhance ikke klar', 'error');
+        return;
+    }
+    
     const btn = document.getElementById('processEnhance');
     if (btn) {
         btn.disabled = true;
         btn.textContent = 'Processerer...';
     }
+    
+    // Show progress
+    if (elements.enhanceProgress) elements.enhanceProgress.classList.remove('hidden');
+    elements.progressText.textContent = 'Starter...';
+    elements.progressPercent.textContent = '0%';
+    elements.enhanceProgressBar.style.width = '0%';
     
     try {
         // 1. AudioContext
@@ -289,10 +309,18 @@ async function processEnhancement() {
         }
         console.log('1. AudioContext ready');
         
+        elements.progressText.textContent = 'Læser audio...';
+        elements.progressPercent.textContent = '10%';
+        elements.enhanceProgressBar.style.width = '10%';
+        
         // 2. Decode
         const arrayBuffer = await track.file.arrayBuffer();
         const audioBuffer = await state.audioContext.decodeAudioData(arrayBuffer.slice(0));
         console.log('2. Decoded:', audioBuffer.numberOfChannels, 'ch,', audioBuffer.sampleRate, 'Hz');
+        
+        elements.progressText.textContent = 'Anvender EQ...';
+        elements.progressPercent.textContent = '30%';
+        elements.enhanceProgressBar.style.width = '30%';
         
         // 3. EQ
         const offlineCtx = new OfflineAudioContext(
@@ -323,6 +351,10 @@ async function processEnhancement() {
         
         const eqBuffer = await offlineCtx.startRendering();
         console.log('3. EQ done');
+        
+        elements.progressText.textContent = 'Loudness normalisering...';
+        elements.progressPercent.textContent = '50%';
+        elements.enhanceProgressBar.style.width = '50%';
         
         // 4. Loudness
         const numCh = eqBuffer.numberOfChannels;
@@ -355,6 +387,10 @@ async function processEnhancement() {
         }
         console.log('5. Loudness done');
         
+        elements.progressText.textContent = 'Stereo widening...';
+        elements.progressPercent.textContent = '70%';
+        elements.enhanceProgressBar.style.width = '70%';
+        
         // 5. Stereo
         let finalBuffer = outBuffer;
         if (numCh >= 2) {
@@ -374,6 +410,10 @@ async function processEnhancement() {
             console.log('6. Stereo done');
         }
         
+        elements.progressText.textContent = 'Eksporterer WAV...';
+        elements.progressPercent.textContent = '90%';
+        elements.enhanceProgressBar.style.width = '90%';
+        
         // 6. WAV
         const wavBlob = bufferToWav(finalBuffer);
         console.log('7. WAV:', wavBlob.size, 'bytes');
@@ -384,6 +424,10 @@ async function processEnhancement() {
         track.enhanced = true;
         
         // 8. Update UI
+        elements.progressText.textContent = 'Færdig!';
+        elements.progressPercent.textContent = '100%';
+        elements.enhanceProgressBar.style.width = '100%';
+        
         const afterLufs = document.getElementById('afterLufs');
         if (afterLufs) afterLufs.textContent = targetLufs.toFixed(1);
         
@@ -393,9 +437,15 @@ async function processEnhancement() {
         console.log('=== processEnhancement DONE ===');
         showToast('Enhancement færdig! 🎉', 'success');
         
+        // Hide progress after 2 sec
+        setTimeout(() => {
+            if (elements.enhanceProgress) elements.enhanceProgress.classList.add('hidden');
+        }, 2000);
+        
     } catch (err) {
         console.error('Enhancement error:', err);
         showToast('Fejl: ' + err.message, 'error');
+        if (elements.enhanceProgress) elements.enhanceProgress.classList.add('hidden');
     } finally {
         if (btn) {
             btn.disabled = false;
