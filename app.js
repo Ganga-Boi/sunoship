@@ -1,67 +1,56 @@
-console.log("🚢 SunoShip — CLEAN BUILD");
+(() => {
+  'use strict';
 
-document.addEventListener("DOMContentLoaded", () => {
+  const el = {};
 
-    // SPLASH
-    const splash = document.getElementById("splash");
-    const app = document.getElementById("app");
+  function initElements() {
+    el.enhanceBtn = document.getElementById('enhanceBtn');
+    el.enhanceProgress = document.getElementById('enhanceProgress');
+    el.progressText = document.getElementById('progressText');
+    el.progressPercent = document.getElementById('progressPercent');
+    el.progressBar = document.getElementById('enhanceProgressBar');
+    el.errorBox = document.getElementById('errorBox');
+  }
 
-    if (splash && app) {
-        setTimeout(() => {
-            splash.remove();
-            app.classList.remove("hidden");
-        }, 500);
-    }
+  function safeText(node, value) {
+    if (node) node.textContent = value;
+  }
 
-    const btn = document.getElementById("processEnhance");
-    if (!btn) return;
+  function showError(msg) {
+    if (!el.errorBox) return;
+    el.errorBox.textContent = msg;
+    el.errorBox.classList.remove('hidden');
+  }
 
-    btn.addEventListener("click", runEnhance);
-});
+  function simulateEnhancement() {
+    if (!el.enhanceProgress) return;
 
-function runEnhance() {
+    el.enhanceProgress.classList.remove('hidden');
+    safeText(el.progressText, 'Processerer…');
+    safeText(el.progressPercent, '0%');
+    if (el.progressBar) el.progressBar.style.width = '0%';
 
-    // 🔒 HENT ALT VIA SAFE LOOKUP
-    const progressBox = document.getElementById("enhanceProgress");
-    const textEl = document.getElementById("progressText");
-    const percentEl = document.getElementById("progressPercent");
-    const barEl = document.getElementById("enhanceProgressBar");
+    let p = 0;
+    const timer = setInterval(() => {
+      p += 10;
+      safeText(el.progressPercent, `${p}%`);
+      if (el.progressBar) el.progressBar.style.width = `${p}%`;
 
-    // 🔴 HVIS NOGET MANGLER → STOP STILLE
-    if (!progressBox || !textEl || !percentEl || !barEl) {
-        console.warn("Enhance UI mangler – stopper uden crash");
-        return;
-    }
+      if (p >= 100) {
+        clearInterval(timer);
+        safeText(el.progressText, 'Færdig');
+      }
+    }, 300);
+  }
 
-    progressBox.classList.remove("hidden");
+  function bindEvents() {
+    if (!el.enhanceBtn) return;
+    el.enhanceBtn.addEventListener('click', simulateEnhancement);
+  }
 
-    updateProgress("Starter…", 0);
+  document.addEventListener('DOMContentLoaded', () => {
+    initElements();
+    bindEvents();
+  });
 
-    setTimeout(() => updateProgress("Analyserer audio…", 25), 400);
-    setTimeout(() => updateProgress("EQ + Loudness…", 55), 800);
-    setTimeout(() => updateProgress("Limiter…", 80), 1200);
-
-    setTimeout(() => {
-        updateProgress("Færdig!", 100);
-        toast("Enhancement færdig ✔");
-    }, 1600);
-
-    function updateProgress(text, percent) {
-        textEl.textContent = text;
-        percentEl.textContent = percent + "%";
-        barEl.style.width = percent + "%";
-    }
-}
-
-function toast(msg) {
-    const box = document.getElementById("toasts");
-    if (!box) return;
-
-    const el = document.createElement("div");
-    el.textContent = msg;
-    el.style.margin = "8px";
-    el.style.color = "#1DB954";
-
-    box.appendChild(el);
-    setTimeout(() => el.remove(), 3000);
-}
+})();
