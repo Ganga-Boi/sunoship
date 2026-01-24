@@ -1,43 +1,38 @@
 body {
-  background:#0d1117;
-  color:#e6edf3;
-  font-family:system-ui, sans-serif;
-  margin:0;
-  padding:40px;
+  background: #0d1117;
+  color: #fff;
+  font-family: system-ui, sans-serif;
 }
 
-.hidden { display:none; }
-
-.btn-primary {
-  padding:14px 22px;
-  background:#7c7cff;
-  color:#fff;
-  border:none;
-  border-radius:10px;
-  cursor:pointer;
+.container {
+  max-width: 600px;
+  margin: 60px auto;
 }
 
-.enhance-progress {
-  margin-top:20px;
+button {
+  padding: 10px 16px;
+  font-size: 16px;
+  margin-top: 10px;
 }
 
-.progress-bar-container {
-  background:#222;
-  height:10px;
-  border-radius:6px;
-  overflow:hidden;
+.progress {
+  margin-top: 20px;
 }
 
-.progress-bar-fill {
-  background:#1db954;
-  height:100%;
-  width:0%;
+.hidden {
+  display: none;
 }
 
-.toast.error {
-  background:#400;
-  color:#fff;
-  padding:10px;
-  margin-top:10px;
-  border-radius:6px;
+.bar {
+  background: #222;
+  height: 10px;
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+#enhanceProgressBar {
+  height: 100%;
+  width: 0%;
+  background: #1db954;
+  transition: width 0.2s linear;
 }
