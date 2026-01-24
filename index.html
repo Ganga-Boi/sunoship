@@ -3,34 +3,28 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>SunoShip - Musik Distribution Prep</title>
-  <link rel="stylesheet" href="style.css"/>
-  <link rel="manifest" href="manifest.json"/>
-  <link rel="icon" href="icon.svg" type="image/svg+xml"/>
-  <meta name="theme-color" content="#0d1117"/>
+  <title>SunoShip – Audio Enhancement</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <main id="app" class="app">
-    <section id="step-enhance" class="step active">
-      <div class="step-content">
-        <h1>Audio Enhancement</h1>
 
-        <button id="processEnhance" class="btn-primary">Auto-Enhance</button>
+  <main class="container">
+    <h1>Audio Enhancement</h1>
 
-        <div id="enhanceProgress" class="enhance-progress hidden">
-          <div class="progress-label">
-            <span id="progressText">Processerer...</span>
-            <span id="progressPercent">0%</span>
-          </div>
-          <div class="progress-bar-container">
-            <div class="progress-bar-fill" id="enhanceProgressBar"></div>
-          </div>
-        </div>
+    <input type="file" id="audioInput" accept="audio/*">
+
+    <button id="enhanceBtn">Auto-Enhance</button>
+
+    <div id="enhanceProgress" class="progress hidden">
+      <span id="progressText">Klar</span>
+      <span id="progressPercent">0%</span>
+      <div class="bar">
+        <div id="enhanceProgressBar"></div>
       </div>
-    </section>
-  </main>
+    </div>
 
-  <div id="toasts"></div>
+    <audio id="audioPlayer" controls></audio>
+  </main>
 
   <script src="app.js"></script>
 </body>
