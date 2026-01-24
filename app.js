@@ -1,8 +1,8 @@
 /* =====================================================
-   SUNOSHIP v3.4 - SIMPLIFIED METADATA
+   SUNOSHIP v3.6 - AMUSE AI-READY
    ===================================================== */
 'use strict';
-console.log('%c🚢 SunoShip v3.4', 'color: #1DB954; font-size: 16px; font-weight: bold');
+console.log('%c🚢 SunoShip v3.6 - Amuse AI-Ready', 'color: #1DB954; font-size: 16px; font-weight: bold');
 
 /* ========= SAFE HELPERS ========= */
 const $ = id => document.getElementById(id);
@@ -487,14 +487,13 @@ function initMetadataStep() {
     loadTrackMetadata();
     
     // Bind input fields
-    ['trackTitle', 'artistName', 'genre', 'releaseDate', 'copyrightYear'].forEach(id => {
+    ['trackTitle', 'genre', 'releaseDate', 'copyrightYear'].forEach(id => {
         const el = $(id);
         if (el && !el.dataset.bound) {
             el.addEventListener('input', () => {
                 const t = state.tracks[state.currentTrackIndex];
                 if (t) {
                     if (id === 'trackTitle') t.metadata.title = el.value;
-                    if (id === 'artistName') t.metadata.artist = el.value;
                     if (id === 'genre') t.metadata.genre = el.value;
                     if (id === 'releaseDate') t.metadata.releaseDate = el.value;
                     if (id === 'copyrightYear') t.metadata.copyrightYear = el.value;
@@ -509,14 +508,15 @@ function loadTrackMetadata() {
     const track = state.tracks[state.currentTrackIndex];
     if (!track) return;
     
+    // Always set artist to Rasta-Jah
+    track.metadata.artist = 'Rasta-Jah';
+    
     const titleEl = $('trackTitle');
-    const artistEl = $('artistName');
     const genreEl = $('genre');
     const dateEl = $('releaseDate');
     const yearEl = $('copyrightYear');
     
     if (titleEl) titleEl.value = track.metadata.title || '';
-    if (artistEl) artistEl.value = track.metadata.artist || '';
     if (genreEl) genreEl.value = track.metadata.genre || '';
     if (dateEl) dateEl.value = track.metadata.releaseDate || '';
     if (yearEl) yearEl.value = track.metadata.copyrightYear || new Date().getFullYear();
