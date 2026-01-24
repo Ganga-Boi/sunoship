@@ -340,7 +340,7 @@
                 <div class="metadata-container">
                     <div class="metadata-header">
                         <h2>📝 Track Info</h2>
-                        <p class="metadata-subtitle">Udfyld info til Spotify, Apple Music, etc.</p>
+                        <p class="metadata-subtitle">Info til Amuse / Spotify / Apple Music</p>
                     </div>
 
                     <div class="track-selector">
@@ -349,54 +349,32 @@
                     </div>
 
                     <div class="metadata-form">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="trackTitle">Titel *</label>
-                                <input type="text" id="trackTitle" class="text-input" placeholder="Sangens titel">
-                            </div>
-                            <div class="form-group">
-                                <label for="artistName">Artist *</label>
-                                <input type="text" id="artistName" class="text-input" placeholder="Dit kunstnernavn">
+                        <div class="form-group">
+                            <label for="trackTitle">Titel *</label>
+                            <input type="text" id="trackTitle" class="text-input" placeholder="Sangens titel">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Artist</label>
+                            <div class="artist-display">
+                                <span class="artist-name">Rasta-Jah</span>
+                                <span class="artist-hint">Fast kunstnernavn</span>
                             </div>
                         </div>
 
+                        <div class="form-group">
+                            <label for="genre">Genre</label>
+                            <input type="text" id="genre" class="text-input" placeholder="F.eks. Salsa, Bachata, Reggae, Rock...">
+                        </div>
+
                         <div class="form-row">
-                            <div class="form-group">
-                                <label for="genre">Genre *</label>
-                                <select id="genre" class="select-input">
-                                    <option value="">Vælg genre...</option>
-                                    <option value="pop">Pop</option>
-                                    <option value="rock">Rock</option>
-                                    <option value="hip-hop">Hip-Hop</option>
-                                    <option value="electronic">Electronic</option>
-                                    <option value="rnb">R&B</option>
-                                    <option value="reggae">Reggae</option>
-                                    <option value="latin">Latin</option>
-                                    <option value="salsa">Salsa</option>
-                                    <option value="bachata">Bachata</option>
-                                    <option value="jazz">Jazz</option>
-                                    <option value="classical">Classical</option>
-                                    <option value="folk">Folk</option>
-                                    <option value="country">Country</option>
-                                    <option value="metal">Metal</option>
-                                    <option value="indie">Indie</option>
-                                    <option value="afrobeats">Afrobeats</option>
-                                    <option value="dancehall">Dancehall</option>
-                                </select>
-                            </div>
                             <div class="form-group">
                                 <label for="releaseDate">Release dato</label>
                                 <input type="date" id="releaseDate" class="text-input">
                             </div>
-                        </div>
-
-                        <div class="form-row">
                             <div class="form-group">
                                 <label for="copyrightYear">Copyright år</label>
                                 <input type="number" id="copyrightYear" class="text-input" placeholder="2025" min="1900" max="2100">
-                            </div>
-                            <div class="form-group">
-                                <!-- Empty for balance -->
                             </div>
                         </div>
                     </div>
@@ -561,6 +539,36 @@
                                 </svg>
                                 <span>Audio analyseret (BPM + LUFS)</span>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- AI Music Info -->
+                    <div class="ai-music-info">
+                        <div class="ai-info-header">
+                            <span class="ai-info-icon">🤖</span>
+                            <h4>AI-genereret musik via Amuse</h4>
+                        </div>
+                        <div class="ai-info-content">
+                            <div class="platform-status">
+                                <div class="platform-group allowed">
+                                    <span class="status-label">✅ Kommer på:</span>
+                                    <div class="platform-list">
+                                        <span class="platform-tag">Spotify</span>
+                                        <span class="platform-tag">Apple Music</span>
+                                        <span class="platform-tag">Tidal</span>
+                                        <span class="platform-tag">Deezer</span>
+                                        <span class="platform-tag">Amazon Music</span>
+                                    </div>
+                                </div>
+                                <div class="platform-group excluded">
+                                    <span class="status-label">❌ Ekskluderet:</span>
+                                    <div class="platform-list">
+                                        <span class="platform-tag excluded">Meta (FB/IG)</span>
+                                        <span class="platform-tag excluded">YouTube Content ID</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <p class="ai-info-note">Amuse tillader AI-musik, men Meta og YouTube Content ID accepterer det ikke.</p>
                         </div>
                     </div>
 
