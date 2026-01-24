@@ -1,8 +1,8 @@
 /* =====================================================
-   SUNOSHIP v3.3 - PRODUCTION READY
+   SUNOSHIP v3.4 - SIMPLIFIED METADATA
    ===================================================== */
 'use strict';
-console.log('%c🚢 SunoShip v3.3', 'color: #1DB954; font-size: 16px; font-weight: bold');
+console.log('%c🚢 SunoShip v3.4', 'color: #1DB954; font-size: 16px; font-weight: bold');
 
 /* ========= SAFE HELPERS ========= */
 const $ = id => document.getElementById(id);
@@ -464,22 +464,30 @@ function bufferToWav(buffer) {
 
 /* ========= METADATA ========= */
 function initMetadataStep() {
-    const track = state.tracks[state.currentTrackIndex];
-    if (!track) return;
-
-    const fields = {
-        'trackTitle': track.metadata.title,
-        'artistName': track.metadata.artist,
-        'albumName': track.metadata.album,
-        'genre': track.metadata.genre
-    };
-
-    Object.entries(fields).forEach(([id, value]) => {
-        const el = $(id);
-        if (el) el.value = value || '';
-    });
-
-    ['trackTitle', 'artistName', 'albumName', 'genre'].forEach(id => {
+    console.log('Init metadata step');
+    
+    // Populate track selector
+    const selector = $('trackSelector');
+    if (selector && state.tracks.length > 0) {
+        selector.innerHTML = state.tracks.map((t, i) =>
+            `<option value="${i}">${escapeHtml(t.name)}</option>`
+        ).join('');
+        selector.value = state.currentTrackIndex;
+        
+        // Listen for track selection change
+        if (!selector.dataset.bound) {
+            selector.addEventListener('change', (e) => {
+                state.currentTrackIndex = parseInt(e.target.value, 10);
+                loadTrackMetadata();
+            });
+            selector.dataset.bound = 'true';
+        }
+    }
+    
+    loadTrackMetadata();
+    
+    // Bind input fields
+    ['trackTitle', 'artistName', 'genre', 'releaseDate', 'copyrightYear'].forEach(id => {
         const el = $(id);
         if (el && !el.dataset.bound) {
             el.addEventListener('input', () => {
@@ -487,13 +495,31 @@ function initMetadataStep() {
                 if (t) {
                     if (id === 'trackTitle') t.metadata.title = el.value;
                     if (id === 'artistName') t.metadata.artist = el.value;
-                    if (id === 'albumName') t.metadata.album = el.value;
                     if (id === 'genre') t.metadata.genre = el.value;
+                    if (id === 'releaseDate') t.metadata.releaseDate = el.value;
+                    if (id === 'copyrightYear') t.metadata.copyrightYear = el.value;
                 }
             });
             el.dataset.bound = 'true';
         }
     });
+}
+
+function loadTrackMetadata() {
+    const track = state.tracks[state.currentTrackIndex];
+    if (!track) return;
+    
+    const titleEl = $('trackTitle');
+    const artistEl = $('artistName');
+    const genreEl = $('genre');
+    const dateEl = $('releaseDate');
+    const yearEl = $('copyrightYear');
+    
+    if (titleEl) titleEl.value = track.metadata.title || '';
+    if (artistEl) artistEl.value = track.metadata.artist || '';
+    if (genreEl) genreEl.value = track.metadata.genre || '';
+    if (dateEl) dateEl.value = track.metadata.releaseDate || '';
+    if (yearEl) yearEl.value = track.metadata.copyrightYear || new Date().getFullYear();
 }
 
 /* ========= ARTWORK ========= */
