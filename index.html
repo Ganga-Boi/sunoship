@@ -338,6 +338,11 @@
         <section id="step-metadata" class="step">
             <div class="step-content">
                 <div class="metadata-container">
+                    <div class="metadata-header">
+                        <h2>📝 Track Info</h2>
+                        <p class="metadata-subtitle">Udfyld info til Spotify, Apple Music, etc.</p>
+                    </div>
+
                     <div class="track-selector">
                         <label>Vælg track:</label>
                         <select id="trackSelector" class="select-input"></select>
@@ -347,19 +352,15 @@
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="trackTitle">Titel *</label>
-                                <input type="text" id="trackTitle" class="text-input" placeholder="Track titel">
+                                <input type="text" id="trackTitle" class="text-input" placeholder="Sangens titel">
                             </div>
                             <div class="form-group">
                                 <label for="artistName">Artist *</label>
-                                <input type="text" id="artistName" class="text-input" placeholder="Artist navn">
+                                <input type="text" id="artistName" class="text-input" placeholder="Dit kunstnernavn">
                             </div>
                         </div>
 
                         <div class="form-row">
-                            <div class="form-group">
-                                <label for="albumName">Album</label>
-                                <input type="text" id="albumName" class="text-input" placeholder="Album navn (valgfrit)">
-                            </div>
                             <div class="form-group">
                                 <label for="genre">Genre *</label>
                                 <select id="genre" class="select-input">
@@ -369,57 +370,39 @@
                                     <option value="hip-hop">Hip-Hop</option>
                                     <option value="electronic">Electronic</option>
                                     <option value="rnb">R&B</option>
+                                    <option value="reggae">Reggae</option>
+                                    <option value="latin">Latin</option>
+                                    <option value="salsa">Salsa</option>
+                                    <option value="bachata">Bachata</option>
                                     <option value="jazz">Jazz</option>
                                     <option value="classical">Classical</option>
                                     <option value="folk">Folk</option>
                                     <option value="country">Country</option>
-                                    <option value="latin">Latin</option>
                                     <option value="metal">Metal</option>
                                     <option value="indie">Indie</option>
+                                    <option value="afrobeats">Afrobeats</option>
+                                    <option value="dancehall">Dancehall</option>
                                 </select>
                             </div>
-                        </div>
-
-                        <div class="form-row">
                             <div class="form-group">
                                 <label for="releaseDate">Release dato</label>
                                 <input type="date" id="releaseDate" class="text-input">
                             </div>
+                        </div>
+
+                        <div class="form-row">
                             <div class="form-group">
                                 <label for="copyrightYear">Copyright år</label>
                                 <input type="number" id="copyrightYear" class="text-input" placeholder="2025" min="1900" max="2100">
                             </div>
-                        </div>
-
-                        <div class="form-row">
-                            <div class="form-group full-width">
-                                <label for="isrc">
-                                    ISRC Kode
-                                    <button type="button" id="generateIsrc" class="generate-btn">Auto-generér</button>
-                                </label>
-                                <input type="text" id="isrc" class="text-input" placeholder="XX-XXX-XX-XXXXX" maxlength="15">
-                                <span class="input-hint">Format: Land-Registrant-År-Nummer</span>
+                            <div class="form-group">
+                                <!-- Empty for balance -->
                             </div>
-                        </div>
-
-                        <div class="form-group full-width">
-                            <label for="lyrics">Lyrics</label>
-                            <textarea id="lyrics" class="textarea-input" rows="6" placeholder="Indsæt lyrics her..."></textarea>
-                        </div>
-
-                        <div class="ai-suggest-box">
-                            <button type="button" id="aiSuggest" class="btn-secondary">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-                                </svg>
-                                AI Forslag
-                            </button>
-                            <span class="ai-hint">Få genre, tags og mood forslag baseret på titel</span>
                         </div>
                     </div>
 
                     <div class="step-actions">
-                        <button id="backToUpload" class="btn-ghost">
+                        <button id="backToEnhance" class="btn-ghost">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M19 12H5M12 19l-7-7 7-7"/>
                             </svg>
