@@ -3,6 +3,7 @@
   "short_name": "SunoShip",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0b0f16",
-  "theme_color": "#6a5cff"
+  "background_color": "#0d1117",
+  "theme_color": "#0d1117",
+  "icons": []
 }
