@@ -918,6 +918,27 @@ body {
     color: #8b949e;
 }
 
+.artist-display {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+}
+
+.artist-name {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #1DB954;
+}
+
+.artist-hint {
+    font-size: 0.85rem;
+    color: #8b949e;
+}
+
 .metadata-form {
     display: flex;
     flex-direction: column;
@@ -972,6 +993,26 @@ body {
 }
 
 .input-hint {
+    font-size: 0.8rem;
+    color: #8b949e;
+}
+
+.artist-display {
+    padding: 12px 16px;
+    background: #21262d;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.artist-name {
+    font-weight: 600;
+    color: #1DB954;
+}
+
+.artist-hint {
     font-size: 0.8rem;
     color: #8b949e;
 }
@@ -1161,6 +1202,81 @@ body {
 .export-container {
     max-width: 700px;
     margin: 0 auto;
+}
+
+/* AI Music Info Box */
+.ai-music-info {
+    margin: 24px 0;
+    padding: 20px;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(29, 185, 84, 0.1));
+    border: 1px solid #30363d;
+    border-radius: 12px;
+}
+
+.ai-info-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.ai-info-icon {
+    font-size: 1.5rem;
+}
+
+.ai-info-header h4 {
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+.ai-info-content {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.platform-status {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.platform-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.status-label {
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.platform-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.platform-tag {
+    padding: 4px 12px;
+    background: rgba(29, 185, 84, 0.2);
+    border-radius: 16px;
+    font-size: 0.85rem;
+    color: #1DB954;
+}
+
+.platform-tag.excluded {
+    background: rgba(248, 81, 73, 0.2);
+    color: #f85149;
+}
+
+.ai-info-note {
+    font-size: 0.85rem;
+    color: #8b949e;
+    margin: 0;
+    padding-top: 8px;
+    border-top: 1px solid #30363d;
 }
 
 .export-summary {
