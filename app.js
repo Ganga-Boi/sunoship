@@ -1,754 +1,503 @@
 /* =====================================================
-   SUNOSHIP v3.6 - AMUSE AI-READY
+   SUNOSHIP LITE v4.0 - Suno → Amuse
    ===================================================== */
 'use strict';
-console.log('%c🚢 SunoShip v3.6 - Amuse AI-Ready', 'color: #1DB954; font-size: 16px; font-weight: bold');
+console.log('%c🚢 SunoShip Lite v4.0', 'color: #1DB954; font-size: 16px; font-weight: bold');
 
-/* ========= SAFE HELPERS ========= */
 const $ = id => document.getElementById(id);
-const wait = ms => new Promise(r => setTimeout(r, ms));
 
-function safeText(id, value) {
-    const el = $(id);
-    if (el) el.textContent = value;
-}
-
-function safeShow(id, show) {
-    const el = $(id);
-    if (el) el.classList.toggle('hidden', !show);
-}
-
-function safeWidth(id, percent) {
-    const el = $(id);
-    if (el) el.style.width = percent + '%';
-}
-
-function toast(msg, type = 'success') {
-    const box = $('toasts');
-    if (!box) { console.log('[Toast]', msg); return; }
-    const el = document.createElement('div');
-    el.className = 'toast ' + type;
-    el.innerHTML = `<span>${msg}</span><button onclick="this.parentElement.remove()">×</button>`;
-    box.appendChild(el);
-    setTimeout(() => el.remove(), 4000);
-}
-
-function updateProgress(text, percent) {
-    safeText('progressText', text);
-    safeText('progressPercent', percent + '%');
-    safeWidth('enhanceProgressBar', percent);
-}
-
-/* ========= STATE ========= */
-const state = {
-    tracks: [],
-    currentTrackIndex: 0,
-    coverImageData: null,
-    audio: null,
-    audioContext: null,
-    enhancedBlob: null,
-    enhancing: false
+let state = {
+    file: null,
+    audioBuffer: null,
+    lufs: null
 };
 
 /* ========= INIT ========= */
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOM ready');
-    hideSplash();
-    initNavigation();
     initUpload();
-    initAudioPlayer();
-    initArtwork();
-    initExport();
+    initPromptGenerator();
+    initVideoCreator();
 });
 
-/* ========= SPLASH ========= */
-function hideSplash() {
-    const splash = $('splash');
-    const app = $('app');
-    if (!splash || !app) return;
-    setTimeout(() => {
-        splash.classList.add('fade-out');
-        setTimeout(() => {
-            splash.remove();
-            app.classList.remove('hidden');
-        }, 600);
-    }, 1200);
-}
-
-/* ========= NAVIGATION ========= */
-function initNavigation() {
-    document.querySelectorAll('.nav-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const step = btn.dataset.step;
-            if (step) goToStep(step);
-        });
-    });
-
-    $('continueToEnhance')?.addEventListener('click', () => goToStep('enhance'));
-    $('backToUploadFromEnhance')?.addEventListener('click', () => goToStep('upload'));
-    $('skipEnhance')?.addEventListener('click', () => goToStep('metadata'));
-    $('continueToMetadata')?.addEventListener('click', () => goToStep('metadata'));
-    $('backToEnhance')?.addEventListener('click', () => goToStep('enhance'));
-    $('continueToArtwork')?.addEventListener('click', () => goToStep('artwork'));
-    $('backToMetadata')?.addEventListener('click', () => goToStep('metadata'));
-    $('continueToExport')?.addEventListener('click', () => goToStep('export'));
-    $('backToArtwork')?.addEventListener('click', () => goToStep('artwork'));
-}
-
-function goToStep(stepName) {
-    console.log('Going to step:', stepName);
-    document.querySelectorAll('.nav-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.step === stepName);
-    });
-    document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
-    const stepEl = $('step-' + stepName);
-    if (stepEl) stepEl.classList.add('active');
-
-    if (stepName === 'enhance') initEnhanceStep();
-    if (stepName === 'metadata') initMetadataStep();
-    if (stepName === 'export') initExportStep();
-}
-
-/* ========= UPLOAD ========= */
+/* ========= UPLOAD & ANALYZE ========= */
 function initUpload() {
-    const dropZone = $('dropZone');
-    const fileInput = $('fileInput');
+    const dropzone = $('dropzone');
+    const input = $('audioInput');
 
-    dropZone?.addEventListener('click', () => fileInput?.click());
-    fileInput?.addEventListener('change', e => handleFiles(e.target.files));
+    dropzone?.addEventListener('click', () => input?.click());
+    
+    input?.addEventListener('change', e => {
+        if (e.target.files[0]) handleFile(e.target.files[0]);
+    });
 
-    dropZone?.addEventListener('dragover', e => {
+    dropzone?.addEventListener('dragover', e => {
         e.preventDefault();
-        dropZone.classList.add('drag-over');
+        dropzone.classList.add('drag-over');
     });
-    dropZone?.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
-    dropZone?.addEventListener('drop', e => {
+    
+    dropzone?.addEventListener('dragleave', () => {
+        dropzone.classList.remove('drag-over');
+    });
+    
+    dropzone?.addEventListener('drop', e => {
         e.preventDefault();
-        dropZone.classList.remove('drag-over');
-        handleFiles(e.dataTransfer.files);
-    });
-}
-
-function handleFiles(files) {
-    const audioFiles = Array.from(files).filter(f => f.type.startsWith('audio/'));
-    if (!audioFiles.length) return;
-
-    audioFiles.forEach(file => {
-        const titleFromFile = file.name.replace(/\.[^/.]+$/, '');
-        state.tracks.push({
-            file,
-            name: titleFromFile,
-            enhanced: false,
-            enhancedFile: null,
-            metadata: { 
-                title: titleFromFile, 
-                artist: 'Rasta-Jah', 
-                genre: '', 
-                releaseDate: '',
-                copyrightYear: new Date().getFullYear()
-            }
-        });
+        dropzone.classList.remove('drag-over');
+        if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
     });
 
-    renderTracks();
-    safeShow('trackList', true);
+    $('normalizeBtn')?.addEventListener('click', normalizeAudio);
+}
+
+async function handleFile(file) {
+    state.file = file;
     
-    const btn = $('continueToEnhance');
-    if (btn) btn.disabled = false;
-
-    toast('Track uploadet');
+    // Show analysis section
+    $('analysis')?.classList.remove('hidden');
     
-    // Analyze all new tracks
-    audioFiles.forEach((_, i) => {
-        const trackIndex = state.tracks.length - audioFiles.length + i;
-        analyzeTrack(state.tracks[trackIndex]);
-    });
-}
-
-function renderTracks() {
-    const container = $('tracks');
-    if (!container) return;
-    container.innerHTML = state.tracks.map((t, i) => `
-        <div class="track-item ${i === state.currentTrackIndex ? 'active' : ''}" onclick="selectTrack(${i})">
-            <span class="track-name">${escapeHtml(t.name)}</span>
-            <span class="track-status">${t.enhanced ? '✓ Enhanced' : ''}</span>
-            <button class="track-delete" onclick="event.stopPropagation(); deleteTrack(${i})">×</button>
-        </div>
-    `).join('');
-}
-
-function selectTrack(index) {
-    state.currentTrackIndex = index;
-    renderTracks();
+    // Track name (remove extension)
+    const name = file.name.replace(/\.[^/.]+$/, '');
+    if ($('trackName')) $('trackName').textContent = name;
+    if ($('songTitle')) $('songTitle').value = name;
     
-    // Analyze if not already done
-    const track = state.tracks[index];
-    if (track && !track.analyzed) {
-        analyzeTrack(track);
-    }
-}
-
-function deleteTrack(index) {
-    state.tracks.splice(index, 1);
-    if (state.currentTrackIndex >= state.tracks.length) {
-        state.currentTrackIndex = Math.max(0, state.tracks.length - 1);
-    }
-    renderTracks();
-}
-
-/* ========= ENHANCE STEP ========= */
-function initEnhanceStep() {
-    console.log('Init enhance step');
-
-    // Reset progress UI on step entry
-    safeShow('enhanceProgress', false);
-    updateProgress('Processerer...', 0);
-
-    const selector = $('enhanceTrackSelector');
-    if (selector && state.tracks.length > 0) {
-        selector.innerHTML = state.tracks.map((t, i) =>
-            `<option value="${i}">${escapeHtml(t.name)}</option>`
-        ).join('');
-        selector.value = state.currentTrackIndex;
-        
-        // Listen for track selection change
-        if (!selector.dataset.bound) {
-            selector.addEventListener('change', (e) => {
-                state.currentTrackIndex = parseInt(e.target.value, 10);
-                const track = state.tracks[state.currentTrackIndex];
-                if (track) {
-                    safeText('beforeLufs', track.lufs ? track.lufs.toFixed(1) : '--');
-                }
-                state.enhancedBlob = null;
-                const playAfter = $('playAfter');
-                if (playAfter) playAfter.disabled = true;
-            });
-            selector.dataset.bound = 'true';
-        }
-    }
-
-    const track = state.tracks[state.currentTrackIndex];
-    if (track) {
-        safeText('beforeLufs', track.lufs ? track.lufs.toFixed(1) : '--');
-    }
-
-    state.enhancedBlob = null;
-    const playAfter = $('playAfter');
-    if (playAfter) playAfter.disabled = true;
-
-    // Bind enhance button
-    const btn = $('processEnhance');
-    if (btn && !btn.dataset.bound) {
-        btn.addEventListener('click', runEnhance);
-        btn.dataset.bound = 'true';
-    }
-
-    // Play buttons
-    const playBefore = $('playBefore');
-    if (playBefore && !playBefore.dataset.bound) {
-        playBefore.addEventListener('click', () => {
-            const t = state.tracks[state.currentTrackIndex];
-            if (t) playAudioFile(t.file);
-        });
-        playBefore.dataset.bound = 'true';
-    }
-
-    const playAfterBtn = $('playAfter');
-    if (playAfterBtn && !playAfterBtn.dataset.bound) {
-        playAfterBtn.addEventListener('click', () => {
-            if (state.enhancedBlob) playAudioFile(state.enhancedBlob);
-        });
-        playAfterBtn.dataset.bound = 'true';
-    }
-}
-
-/* ========= ENHANCE - FULL AUDIO PROCESSING ========= */
-async function runEnhance() {
-    const track = state.tracks[state.currentTrackIndex];
-    if (!track || !track.file) {
-        toast('Ingen track valgt', 'error');
-        return;
-    }
-    if (state.enhancing) return;
-
-    state.enhancing = true;
-    const btn = $('processEnhance');
-    if (btn) {
-        btn.disabled = true;
-        btn.textContent = 'Processerer...';
-    }
-
-    safeShow('enhanceProgress', true);
-    updateProgress('Starter...', 0);
-
+    // Format
+    const ext = file.name.split('.').pop().toUpperCase();
+    if ($('format')) $('format').textContent = ext;
+    
+    // Analyze audio
+    toast('Analyserer...');
+    
     try {
-        // 1. AudioContext
-        if (!state.audioContext) {
-            state.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const arrayBuffer = await file.arrayBuffer();
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        state.audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+        
+        // Duration
+        const duration = state.audioBuffer.duration;
+        const mins = Math.floor(duration / 60);
+        const secs = Math.floor(duration % 60);
+        if ($('duration')) $('duration').textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+        
+        // Calculate LUFS
+        state.lufs = calculateLUFS(state.audioBuffer);
+        if ($('lufsValue')) $('lufsValue').textContent = `${state.lufs.toFixed(1)} LUFS`;
+        
+        // Check if within acceptable range (-13 to -15 LUFS)
+        const isGood = state.lufs >= -15 && state.lufs <= -13;
+        
+        if (isGood) {
+            $('lufsOk')?.classList.remove('hidden');
+            $('lufsWarning')?.classList.add('hidden');
+            if ($('lufsStatus')) $('lufsStatus').textContent = '✅';
+        } else {
+            $('lufsWarning')?.classList.remove('hidden');
+            $('lufsOk')?.classList.add('hidden');
+            if ($('lufsStatus')) $('lufsStatus').textContent = '⚠️';
         }
-        if (state.audioContext.state === 'suspended') {
-            await state.audioContext.resume();
-        }
-
-        updateProgress('Læser audio...', 10);
-        await wait(100);
-
-        // 2. Decode
-        const arrayBuffer = await track.file.arrayBuffer();
-        const audioBuffer = await state.audioContext.decodeAudioData(arrayBuffer.slice(0));
-        console.log('Decoded:', audioBuffer.numberOfChannels, 'ch,', audioBuffer.sampleRate, 'Hz');
-
-        updateProgress('Anvender EQ...', 25);
-        await wait(100);
-
-        // 3. EQ Processing
-        const offlineCtx = new OfflineAudioContext(
-            audioBuffer.numberOfChannels,
-            audioBuffer.length,
-            audioBuffer.sampleRate
-        );
-
-        const source = offlineCtx.createBufferSource();
-        source.buffer = audioBuffer;
-
-        const hp = offlineCtx.createBiquadFilter();
-        hp.type = 'highpass';
-        hp.frequency.value = 80;
-        hp.Q.value = 0.7;
-
-        const mid = offlineCtx.createBiquadFilter();
-        mid.type = 'peaking';
-        mid.frequency.value = 3000;
-        mid.gain.value = 1.5;
-        mid.Q.value = 1;
-
-        const hi = offlineCtx.createBiquadFilter();
-        hi.type = 'highshelf';
-        hi.frequency.value = 10000;
-        hi.gain.value = 2;
-
-        source.connect(hp).connect(mid).connect(hi).connect(offlineCtx.destination);
-        source.start(0);
-
-        const eqBuffer = await offlineCtx.startRendering();
-
-        updateProgress('Loudness normalisering...', 50);
-        await wait(100);
-
-        // 4. Loudness normalization
-        const numCh = eqBuffer.numberOfChannels;
-        const len = eqBuffer.length;
-        const rate = eqBuffer.sampleRate;
-
-        let sum = 0;
-        for (let c = 0; c < numCh; c++) {
-            const data = eqBuffer.getChannelData(c);
-            for (let i = 0; i < len; i++) sum += data[i] * data[i];
-        }
-        const rms = Math.sqrt(sum / (len * numCh));
-        const currentLufs = -0.691 + 10 * Math.log10(Math.max(rms * rms, 1e-10));
-        const targetLufs = -14;
-        const gainDb = Math.min(targetLufs - currentLufs, 12);
-        const gain = Math.pow(10, gainDb / 20);
-        const ceiling = 0.89;
-
-        const outBuffer = state.audioContext.createBuffer(numCh, len, rate);
-        for (let c = 0; c < numCh; c++) {
-            const inD = eqBuffer.getChannelData(c);
-            const outD = outBuffer.getChannelData(c);
-            for (let i = 0; i < len; i++) {
-                let s = inD[i] * gain;
-                if (Math.abs(s) > ceiling * 0.8) {
-                    s = Math.tanh(s / ceiling) * ceiling;
-                }
-                outD[i] = Math.max(-ceiling, Math.min(ceiling, s));
-            }
-        }
-
-        updateProgress('Stereo widening...', 70);
-        await wait(100);
-
-        // 5. Stereo widening
-        let finalBuffer = outBuffer;
-        if (numCh >= 2) {
-            const width = 0.25;
-            const sBuffer = state.audioContext.createBuffer(2, len, rate);
-            const L = outBuffer.getChannelData(0);
-            const R = outBuffer.getChannelData(1);
-            const oL = sBuffer.getChannelData(0);
-            const oR = sBuffer.getChannelData(1);
-            for (let i = 0; i < len; i++) {
-                const m = (L[i] + R[i]) * 0.5;
-                const s = (L[i] - R[i]) * 0.5 * (1 + width);
-                oL[i] = m + s;
-                oR[i] = m - s;
-            }
-            finalBuffer = sBuffer;
-        }
-
-        updateProgress('Eksporterer WAV...', 90);
-        await wait(100);
-
-        // 6. Convert to WAV
-        const wavBlob = bufferToWav(finalBuffer);
-
-        // 7. Save
-        state.enhancedBlob = wavBlob;
-        track.enhancedFile = wavBlob;
-        track.enhanced = true;
-
-        updateProgress('Færdig!', 100);
-
-        // 8. Update UI
-        safeText('afterLufs', targetLufs.toFixed(1));
-        const playAfterBtn = $('playAfter');
-        if (playAfterBtn) playAfterBtn.disabled = false;
-
-        toast('Enhancement færdig! 🎉');
-        renderTracks();
-
+        
+        // Auto-check audio in checklist
+        if ($('checkAudio')) $('checkAudio').checked = true;
+        
+        // Enable video button if cover is also loaded
+        updateVideoButton();
+        
+        toast('Analyse færdig!');
+        
     } catch (err) {
-        console.error('Enhancement error:', err);
-        toast('Fejl: ' + err.message, 'error');
-    } finally {
-        setTimeout(() => {
-            safeShow('enhanceProgress', false);
-            if (btn) {
-                btn.disabled = false;
-                btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Auto-Enhance';
-            }
-            state.enhancing = false;
-        }, 1000);
+        console.error('Analyse fejl:', err);
+        toast('Kunne ikke analysere fil', 'error');
     }
 }
 
-/* ========= WAV ENCODER ========= */
-function bufferToWav(buffer) {
-    const numCh = buffer.numberOfChannels;
-    const rate = buffer.sampleRate;
-    const len = buffer.length;
-    const bytesPerSample = 2;
-    const blockAlign = numCh * bytesPerSample;
-    const byteRate = rate * blockAlign;
-    const dataSize = len * blockAlign;
-    const bufferSize = 44 + dataSize;
-
-    const wav = new ArrayBuffer(bufferSize);
-    const view = new DataView(wav);
-
-    const writeStr = (offset, str) => {
-        for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
-    };
-
-    writeStr(0, 'RIFF');
-    view.setUint32(4, 36 + dataSize, true);
-    writeStr(8, 'WAVE');
-    writeStr(12, 'fmt ');
-    view.setUint32(16, 16, true);
-    view.setUint16(20, 1, true);
-    view.setUint16(22, numCh, true);
-    view.setUint32(24, rate, true);
-    view.setUint32(28, byteRate, true);
-    view.setUint16(32, blockAlign, true);
-    view.setUint16(34, 16, true);
-    writeStr(36, 'data');
-    view.setUint32(40, dataSize, true);
-
-    let offset = 44;
-    const channels = [];
-    for (let c = 0; c < numCh; c++) channels.push(buffer.getChannelData(c));
-
-    for (let i = 0; i < len; i++) {
-        for (let c = 0; c < numCh; c++) {
-            const sample = Math.max(-1, Math.min(1, channels[c][i]));
-            view.setInt16(offset, sample * 0x7FFF, true);
-            offset += 2;
-        }
-    }
-
-    return new Blob([wav], { type: 'audio/wav' });
-}
-
-/* ========= METADATA ========= */
-function initMetadataStep() {
-    console.log('Init metadata step');
+function calculateLUFS(audioBuffer) {
+    // Simplified LUFS calculation
+    const channelData = audioBuffer.getChannelData(0);
+    let sum = 0;
     
-    // Populate track selector
-    const selector = $('trackSelector');
-    if (selector && state.tracks.length > 0) {
-        selector.innerHTML = state.tracks.map((t, i) =>
-            `<option value="${i}">${escapeHtml(t.name)}</option>`
-        ).join('');
-        selector.value = state.currentTrackIndex;
-        
-        // Listen for track selection change
-        if (!selector.dataset.bound) {
-            selector.addEventListener('change', (e) => {
-                state.currentTrackIndex = parseInt(e.target.value, 10);
-                loadTrackMetadata();
-            });
-            selector.dataset.bound = 'true';
-        }
+    for (let i = 0; i < channelData.length; i++) {
+        sum += channelData[i] * channelData[i];
     }
     
-    loadTrackMetadata();
+    const rms = Math.sqrt(sum / channelData.length);
+    const lufs = 20 * Math.log10(rms) - 0.691;
     
-    // Bind input fields
-    ['trackTitle', 'genre', 'releaseDate', 'copyrightYear'].forEach(id => {
-        const el = $(id);
-        if (el && !el.dataset.bound) {
-            el.addEventListener('input', () => {
-                const t = state.tracks[state.currentTrackIndex];
-                if (t) {
-                    if (id === 'trackTitle') t.metadata.title = el.value;
-                    if (id === 'genre') t.metadata.genre = el.value;
-                    if (id === 'releaseDate') t.metadata.releaseDate = el.value;
-                    if (id === 'copyrightYear') t.metadata.copyrightYear = el.value;
-                }
-            });
-            el.dataset.bound = 'true';
-        }
-    });
+    return Math.max(-60, Math.min(0, lufs));
 }
 
-function loadTrackMetadata() {
-    const track = state.tracks[state.currentTrackIndex];
-    if (!track) return;
-    
-    // Always set artist to Rasta-Jah
-    track.metadata.artist = 'Rasta-Jah';
-    
-    const titleEl = $('trackTitle');
-    const genreEl = $('genre');
-    const dateEl = $('releaseDate');
-    const yearEl = $('copyrightYear');
-    
-    if (titleEl) titleEl.value = track.metadata.title || '';
-    if (genreEl) genreEl.value = track.metadata.genre || '';
-    if (dateEl) dateEl.value = track.metadata.releaseDate || '';
-    if (yearEl) yearEl.value = track.metadata.copyrightYear || new Date().getFullYear();
-}
-
-/* ========= ARTWORK ========= */
-function initArtwork() {
-    const input = $('artworkInput');
-    const preview = $('coverPreview');
-    const dropZone = $('artworkDropZone');
-
-    // File input handler
-    if (input) {
-        input.addEventListener('change', e => {
-            const file = e.target.files[0];
-            if (file) handleCoverUpload(file);
-        });
-    }
-    
-    // Drop zone click
-    dropZone?.addEventListener('click', () => input?.click());
-    
-    // Drag and drop
-    dropZone?.addEventListener('dragover', e => {
-        e.preventDefault();
-        dropZone.classList.add('drag-over');
-    });
-    dropZone?.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
-    dropZone?.addEventListener('drop', e => {
-        e.preventDefault();
-        dropZone.classList.remove('drag-over');
-        const file = e.dataTransfer.files[0];
-        if (file) handleCoverUpload(file);
-    });
-}
-
-function handleCoverUpload(file) {
-    if (!file.type.startsWith('image/')) {
-        toast('Kun billeder tilladt', 'error');
-        return;
-    }
-    
-    const reader = new FileReader();
-    reader.onload = evt => {
-        state.coverImageData = evt.target.result;
-        
-        const preview = $('coverPreview');
-        if (preview) preview.innerHTML = `<img src="${evt.target.result}" alt="Cover">`;
-        
-        safeText('coverStatus', 'Cover uploadet ✓');
-        safeShow('albumMockup', true);
-        
-        // Update mockups
-        const mockupSpotify = $('mockupSpotify');
-        const mockupApple = $('mockupApple');
-        if (mockupSpotify) mockupSpotify.src = evt.target.result;
-        if (mockupApple) mockupApple.src = evt.target.result;
-        
-        toast('Cover uploadet');
-    };
-    reader.readAsDataURL(file);
-}
-
-/* ========= EXPORT ========= */
-function initExport() {
-    $('downloadExport')?.addEventListener('click', downloadPackage);
-}
-
-function initExportStep() {
-    const track = state.tracks[state.currentTrackIndex];
-    if (!track) return;
-    safeText('summaryTitle', track.metadata.title || track.name);
-    safeText('summaryArtist', track.metadata.artist || 'Unknown');
-}
-
-async function downloadPackage() {
-    const track = state.tracks[state.currentTrackIndex];
-    if (!track) {
-        toast('Ingen track', 'error');
+async function normalizeAudio() {
+    if (!state.audioBuffer) {
+        toast('Upload en fil først', 'error');
         return;
     }
 
-    const fileToDownload = track.enhancedFile || track.file;
-    
-    // Get correct extension
-    let ext;
-    if (track.enhanced) {
-        ext = '.wav'; // Enhanced files are always WAV
-    } else {
-        // Get original file extension
-        const origName = track.file.name;
-        const dotIndex = origName.lastIndexOf('.');
-        ext = dotIndex > 0 ? origName.substring(dotIndex) : '.mp3';
-    }
-    
-    const name = (track.metadata.title || track.name) + (track.enhanced ? '_enhanced' : '') + ext;
+    toast('Normaliserer til -14 LUFS...');
 
-    const url = URL.createObjectURL(fileToDownload);
+    const targetLUFS = -14;
+    const currentLUFS = state.lufs;
+    const gainDB = targetLUFS - currentLUFS;
+    const gainLinear = Math.pow(10, gainDB / 20);
+
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const numChannels = state.audioBuffer.numberOfChannels;
+    const length = state.audioBuffer.length;
+    const sampleRate = state.audioBuffer.sampleRate;
+
+    const newBuffer = audioCtx.createBuffer(numChannels, length, sampleRate);
+
+    for (let channel = 0; channel < numChannels; channel++) {
+        const inputData = state.audioBuffer.getChannelData(channel);
+        const outputData = newBuffer.getChannelData(channel);
+        
+        for (let i = 0; i < length; i++) {
+            let sample = inputData[i] * gainLinear;
+            // Soft limiting
+            if (sample > 0.95) sample = 0.95 + (sample - 0.95) * 0.1;
+            if (sample < -0.95) sample = -0.95 + (sample + 0.95) * 0.1;
+            outputData[i] = sample;
+        }
+    }
+
+    state.audioBuffer = newBuffer;
+    state.lufs = targetLUFS;
+
+    // Update UI
+    if ($('lufsValue')) $('lufsValue').textContent = '-14.0 LUFS';
+    if ($('lufsStatus')) $('lufsStatus').textContent = '✅';
+    $('lufsOk')?.classList.remove('hidden');
+    $('lufsWarning')?.classList.add('hidden');
+
+    // Create download
+    const wavBlob = audioBufferToWav(newBuffer);
+    const name = state.file.name.replace(/\.[^/.]+$/, '') + '_normalized.wav';
+    
+    const url = URL.createObjectURL(wavBlob);
     const a = document.createElement('a');
     a.href = url;
     a.download = name;
     a.click();
     URL.revokeObjectURL(url);
 
-    toast('Download startet');
+    toast('Normaliseret og downloadet! ✅');
 }
 
-/* ========= AUDIO PLAYER ========= */
-function initAudioPlayer() {
-    state.audio = new Audio();
+function audioBufferToWav(buffer) {
+    const numChannels = buffer.numberOfChannels;
+    const sampleRate = buffer.sampleRate;
+    const format = 1; // PCM
+    const bitDepth = 16;
     
-    state.audio.addEventListener('loadedmetadata', () => {
-        const dur = state.audio.duration;
-        safeText('duration', formatTime(dur));
-    });
+    const bytesPerSample = bitDepth / 8;
+    const blockAlign = numChannels * bytesPerSample;
     
-    state.audio.addEventListener('timeupdate', () => {
-        const cur = state.audio.currentTime;
-        const dur = state.audio.duration || 1;
-        safeText('currentTime', formatTime(cur));
-        safeWidth('progressFill', (cur / dur) * 100);
-    });
+    const dataLength = buffer.length * blockAlign;
+    const bufferLength = 44 + dataLength;
     
-    state.audio.addEventListener('ended', () => {
-        const playIcon = document.querySelector('.play-icon');
-        const pauseIcon = document.querySelector('.pause-icon');
-        if (playIcon) playIcon.classList.remove('hidden');
-        if (pauseIcon) pauseIcon.classList.add('hidden');
-    });
+    const arrayBuffer = new ArrayBuffer(bufferLength);
+    const view = new DataView(arrayBuffer);
     
-    // Play/pause button
-    $('playPause')?.addEventListener('click', () => {
-        if (!state.audio) return;
-        if (state.audio.paused) {
-            state.audio.play();
-            document.querySelector('.play-icon')?.classList.add('hidden');
-            document.querySelector('.pause-icon')?.classList.remove('hidden');
-        } else {
-            state.audio.pause();
-            document.querySelector('.play-icon')?.classList.remove('hidden');
-            document.querySelector('.pause-icon')?.classList.add('hidden');
+    // WAV header
+    writeString(view, 0, 'RIFF');
+    view.setUint32(4, 36 + dataLength, true);
+    writeString(view, 8, 'WAVE');
+    writeString(view, 12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, format, true);
+    view.setUint16(22, numChannels, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * blockAlign, true);
+    view.setUint16(32, blockAlign, true);
+    view.setUint16(34, bitDepth, true);
+    writeString(view, 36, 'data');
+    view.setUint32(40, dataLength, true);
+    
+    // Interleave channels
+    const channels = [];
+    for (let i = 0; i < numChannels; i++) {
+        channels.push(buffer.getChannelData(i));
+    }
+    
+    let offset = 44;
+    for (let i = 0; i < buffer.length; i++) {
+        for (let ch = 0; ch < numChannels; ch++) {
+            const sample = Math.max(-1, Math.min(1, channels[ch][i]));
+            const intSample = sample < 0 ? sample * 0x8000 : sample * 0x7FFF;
+            view.setInt16(offset, intSample, true);
+            offset += 2;
         }
-    });
+    }
+    
+    return new Blob([arrayBuffer], { type: 'audio/wav' });
 }
 
-function formatTime(sec) {
-    if (!sec || !isFinite(sec)) return '0:00';
-    const m = Math.floor(sec / 60);
-    const s = Math.floor(sec % 60);
-    return m + ':' + (s < 10 ? '0' : '') + s;
-}
-
-function playAudioFile(fileOrBlob, trackInfo) {
-    if (!state.audio) state.audio = new Audio();
-    state.audio.src = URL.createObjectURL(fileOrBlob);
-    state.audio.play();
-    
-    // Update player UI
-    safeShow('audioPlayer', true);
-    document.querySelector('.play-icon')?.classList.add('hidden');
-    document.querySelector('.pause-icon')?.classList.remove('hidden');
-    
-    // Set title/artist if available
-    const track = trackInfo || state.tracks[state.currentTrackIndex];
-    if (track) {
-        const titleEl = document.querySelector('.player-title');
-        const artistEl = document.querySelector('.player-artist');
-        if (titleEl) titleEl.textContent = track.metadata?.title || track.name || 'Track';
-        if (artistEl) artistEl.textContent = track.metadata?.artist || 'Unknown';
+function writeString(view, offset, string) {
+    for (let i = 0; i < string.length; i++) {
+        view.setUint8(offset + i, string.charCodeAt(i));
     }
 }
 
-/* ========= ANALYSIS ========= */
-async function analyzeTrack(track) {
-    if (!track || track.analyzed) return;
+/* ========= COVER PROMPT GENERATOR ========= */
+function initPromptGenerator() {
+    $('generatePrompt')?.addEventListener('click', generatePrompt);
+    $('copyPrompt')?.addEventListener('click', copyPrompt);
+}
+
+function generatePrompt() {
+    const title = $('songTitle')?.value || 'Untitled';
+    const genre = $('songGenre')?.value || 'music';
+    const style = $('coverStyle')?.value || 'retro';
+    const extra = $('extraDetails')?.value || '';
+
+    const styleDescriptions = {
+        retro: 'vintage 70s/80s aesthetic, warm colors, retro typography vibes, nostalgic feel',
+        abstract: 'abstract geometric shapes, bold colors, modern artistic composition',
+        neon: 'neon lights, cyberpunk city, synthwave colors (pink, blue, purple), glowing effects',
+        minimal: 'minimalist design, clean lines, simple shapes, elegant negative space',
+        tropical: 'tropical paradise, palm trees, sunset colors, beach vibes',
+        urban: 'urban street art style, graffiti elements, city backdrop, gritty texture',
+        psychedelic: 'psychedelic patterns, vibrant swirling colors, trippy visuals, 60s inspired',
+        nature: 'organic natural elements, earth tones, flowing forms, peaceful atmosphere'
+    };
+
+    const prompt = `Square album cover for a ${genre} track titled "${title}".
+
+Style: ${styleDescriptions[style]}
+${extra ? `\nDetails: ${extra}` : ''}
+
+Requirements:
+- Include title "${title}" in stylish typography
+- NO logos, watermarks, or social media handles
+- High detail, professional album-ready artwork
+- 1:1 aspect ratio, 3000x3000 px
+- Clean composition, visually striking`;
+
+    if ($('generatedPrompt')) $('generatedPrompt').value = prompt;
+    $('promptResult')?.classList.remove('hidden');
+    
+    // Auto-check in checklist
+    if ($('checkTitle')) $('checkTitle').checked = true;
+    
+    toast('Prompt genereret! 🎨');
+}
+
+function copyPrompt() {
+    const prompt = $('generatedPrompt')?.value;
+    if (!prompt) return;
+
+    navigator.clipboard.writeText(prompt).then(() => {
+        toast('Kopieret! 📋');
+    }).catch(() => {
+        $('generatedPrompt')?.select();
+        document.execCommand('copy');
+        toast('Kopieret! 📋');
+    });
+}
+
+/* ========= TOAST ========= */
+function toast(message, type = 'success') {
+    const el = $('toast');
+    if (!el) return;
+    
+    el.textContent = message;
+    el.className = `toast ${type}`;
+    
+    setTimeout(() => el.classList.add('hidden'), 3000);
+}
+
+/* ========= VIDEO CREATOR ========= */
+let coverImageData = null;
+
+function initVideoCreator() {
+    const coverDropzone = $('coverDropzone');
+    const coverInput = $('coverInput');
+
+    coverDropzone?.addEventListener('click', () => coverInput?.click());
+    
+    coverInput?.addEventListener('change', e => {
+        if (e.target.files[0]) handleCoverFile(e.target.files[0]);
+    });
+
+    coverDropzone?.addEventListener('dragover', e => {
+        e.preventDefault();
+        coverDropzone.classList.add('drag-over');
+    });
+    
+    coverDropzone?.addEventListener('dragleave', () => {
+        coverDropzone.classList.remove('drag-over');
+    });
+    
+    coverDropzone?.addEventListener('drop', e => {
+        e.preventDefault();
+        coverDropzone.classList.remove('drag-over');
+        if (e.dataTransfer.files[0]) handleCoverFile(e.dataTransfer.files[0]);
+    });
+
+    $('createVideo')?.addEventListener('click', createSocialVideo);
+}
+
+function handleCoverFile(file) {
+    if (!file.type.startsWith('image/')) {
+        toast('Kun billeder tilladt', 'error');
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = e => {
+        coverImageData = e.target.result;
+        
+        // Show preview
+        const preview = $('coverPreview');
+        const img = $('previewImg');
+        if (img) img.src = coverImageData;
+        preview?.classList.remove('hidden');
+        $('coverDropzone')?.classList.add('hidden');
+        
+        // Enable video button if audio is also loaded
+        updateVideoButton();
+        
+        // Check in checklist
+        if ($('checkCover')) $('checkCover').checked = true;
+        
+        toast('Cover uploadet! 🖼️');
+    };
+    reader.readAsDataURL(file);
+}
+
+function updateVideoButton() {
+    const btn = $('createVideo');
+    if (btn) {
+        btn.disabled = !(state.file && coverImageData);
+    }
+}
+
+async function createSocialVideo() {
+    if (!state.file || !coverImageData) {
+        toast('Upload både lyd og cover først', 'error');
+        return;
+    }
+
+    const btn = $('createVideo');
+    const progress = $('videoProgress');
+    const progressBar = $('progressBar');
+    const progressText = $('progressText');
+    
+    btn.disabled = true;
+    btn.textContent = '⏳ Opretter video...';
+    progress?.classList.remove('hidden');
 
     try {
-        if (!state.audioContext) {
-            state.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        // Get duration setting
+        const durationSetting = $('videoDuration')?.value || '30';
+        const audioDuration = state.audioBuffer?.duration || 30;
+        let targetDuration;
+        
+        if (durationSetting === 'full') {
+            targetDuration = audioDuration;
+        } else {
+            targetDuration = Math.min(parseInt(durationSetting), audioDuration);
         }
 
-        const arrayBuffer = await track.file.arrayBuffer();
-        const audioBuffer = await state.audioContext.decodeAudioData(arrayBuffer.slice(0));
+        // Create canvas
+        const canvas = document.createElement('canvas');
+        canvas.width = 1080;  // Instagram/FB optimal
+        canvas.height = 1080; // Square format
+        const ctx = canvas.getContext('2d');
 
-        let sum = 0;
-        const data = audioBuffer.getChannelData(0);
-        const len = Math.min(data.length, audioBuffer.sampleRate * 30);
-        for (let i = 0; i < len; i++) sum += data[i] * data[i];
-        const rms = Math.sqrt(sum / len);
-        track.lufs = -0.691 + 10 * Math.log10(Math.max(rms * rms, 1e-10));
+        // Load cover image
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        await new Promise((resolve, reject) => {
+            img.onload = resolve;
+            img.onerror = reject;
+            img.src = coverImageData;
+        });
 
-        track.analyzed = true;
-        console.log('Analyzed:', track.name, 'LUFS:', track.lufs.toFixed(1));
+        // Draw image to canvas
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-        // Update analysis UI
-        safeText('lufsValue', track.lufs.toFixed(1));
-        safeShow('analysisSection', true);
+        // Create audio element
+        const audio = new Audio();
+        audio.src = URL.createObjectURL(state.file);
+        await new Promise(resolve => {
+            audio.oncanplaythrough = resolve;
+            audio.load();
+        });
+
+        // Get audio stream
+        const audioCtx = new AudioContext();
+        const source = audioCtx.createMediaElementSource(audio);
+        const dest = audioCtx.createMediaStreamDestination();
+        source.connect(dest);
+        source.connect(audioCtx.destination); // Also connect to speakers for monitoring
+
+        // Create video stream from canvas
+        const canvasStream = canvas.captureStream(30); // 30 FPS
         
-        // Update meter
-        const meterFill = $('loudnessMeterFill');
-        if (meterFill) {
-            const percent = Math.max(0, Math.min(100, ((track.lufs + 24) / 21) * 100));
-            meterFill.style.width = percent + '%';
-        }
-        
-        // Update distribution badge
-        const badge = $('distributionBadge');
-        if (badge) {
-            if (track.lufs >= -16 && track.lufs <= -12) {
-                badge.classList.add('ready');
-            } else {
-                badge.classList.remove('ready');
+        // Combine video and audio streams
+        const combinedStream = new MediaStream([
+            ...canvasStream.getVideoTracks(),
+            ...dest.stream.getAudioTracks()
+        ]);
+
+        // Set up MediaRecorder
+        const chunks = [];
+        const recorder = new MediaRecorder(combinedStream, {
+            mimeType: 'video/webm;codecs=vp9,opus',
+            videoBitsPerSecond: 5000000 // 5 Mbps for good quality
+        });
+
+        recorder.ondataavailable = e => {
+            if (e.data.size > 0) chunks.push(e.data);
+        };
+
+        recorder.onstop = () => {
+            const blob = new Blob(chunks, { type: 'video/webm' });
+            const url = URL.createObjectURL(blob);
+            
+            // Download
+            const a = document.createElement('a');
+            a.href = url;
+            const title = $('songTitle')?.value || 'song';
+            a.download = `${title}_social.webm`;
+            a.click();
+            
+            URL.revokeObjectURL(url);
+            URL.revokeObjectURL(audio.src);
+            
+            // Reset UI
+            btn.disabled = false;
+            btn.textContent = '🎬 Lav Video til Social Media';
+            progress?.classList.add('hidden');
+            
+            toast('Video klar! 🎬');
+        };
+
+        // Start recording
+        recorder.start();
+        audio.currentTime = 0;
+        audio.play();
+
+        // Update progress
+        const updateProgress = () => {
+            if (audio.currentTime < targetDuration && recorder.state === 'recording') {
+                const percent = Math.round((audio.currentTime / targetDuration) * 100);
+                if (progressBar) progressBar.style.width = `${percent}%`;
+                if (progressText) progressText.textContent = `${percent}%`;
+                requestAnimationFrame(updateProgress);
             }
-        }
+        };
+        updateProgress();
+
+        // Stop after target duration
+        setTimeout(() => {
+            audio.pause();
+            recorder.stop();
+            audioCtx.close();
+        }, targetDuration * 1000);
 
     } catch (err) {
-        console.error('Analysis error:', err);
+        console.error('Video creation error:', err);
+        toast('Fejl ved oprettelse af video', 'error');
+        btn.disabled = false;
+        btn.textContent = '🎬 Lav Video til Social Media';
+        progress?.classList.add('hidden');
     }
 }
-
-/* ========= UTILITIES ========= */
-function escapeHtml(text) {
-    if (!text) return '';
-    return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
-
-window.selectTrack = selectTrack;
-window.deleteTrack = deleteTrack;
