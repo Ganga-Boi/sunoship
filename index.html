@@ -153,18 +153,19 @@
                     <span class="check">✅</span>
                 </div>
 
-                <div class="video-options">
-                    <label>Video længde</label>
-                    <select id="videoDuration">
-                        <option value="30">30 sekunder (Reels/Stories)</option>
-                        <option value="60">60 sekunder</option>
-                        <option value="full">Hele sangen</option>
-                    </select>
+                <div class="video-buttons">
+                    <button id="createReels" class="btn-video" disabled>
+                        <span class="btn-icon">📱</span>
+                        <span class="btn-label">Reels / Stories</span>
+                        <span class="btn-desc">30 sek video</span>
+                    </button>
+                    
+                    <button id="createFeed" class="btn-video" disabled>
+                        <span class="btn-icon">📰</span>
+                        <span class="btn-label">Feed Post</span>
+                        <span class="btn-desc">Hele sangen</span>
+                    </button>
                 </div>
-
-                <button id="createVideo" class="btn-primary" disabled>
-                    🎬 Lav Video til Social Media
-                </button>
                 
                 <div id="videoProgress" class="progress hidden">
                     <div class="progress-bar" id="progressBar"></div>
