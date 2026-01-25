@@ -3,184 +3,131 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SunoShip Lite - Amuse Ready</title>
+    <title>SunoShip - Suno til Streaming & Social</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="app">
         <header>
-            <h1>🚢 SunoShip <span>Lite</span></h1>
-            <p>Suno → Amuse på 2 minutter</p>
+            <h1>🚢 SunoShip</h1>
+            <p>Hvad vil du gøre med din musik?</p>
         </header>
 
         <main>
-            <!-- Upload & Analyze -->
-            <section class="card" id="uploadSection">
-                <h2>1. Upload din Suno-track</h2>
-                <div class="dropzone" id="dropzone">
-                    <span class="icon">🎵</span>
-                    <span>Drop audio her</span>
-                    <span class="small">eller klik for at vælge</span>
-                    <input type="file" id="audioInput" accept="audio/*" hidden>
-                </div>
+            <!-- GATEWAY: Vælg vej -->
+            <section id="gateway" class="gateway">
+                <button class="path-btn" id="pathAmuse">
+                    <span class="path-icon">🎧</span>
+                    <span class="path-title">Til Streaming</span>
+                    <span class="path-desc">Spotify, Apple Music via Amuse</span>
+                </button>
                 
-                <div id="analysis" class="analysis hidden">
-                    <h3 id="trackName">Track navn</h3>
-                    <div class="stats">
-                        <div class="stat">
-                            <span class="label">Loudness</span>
-                            <span class="value" id="lufsValue">-- LUFS</span>
-                            <span class="status" id="lufsStatus"></span>
-                        </div>
-                        <div class="stat">
-                            <span class="label">Varighed</span>
-                            <span class="value" id="duration">--:--</span>
-                        </div>
-                        <div class="stat">
-                            <span class="label">Format</span>
-                            <span class="value" id="format">--</span>
-                        </div>
-                    </div>
-                    <div id="lufsWarning" class="warning hidden">
-                        ⚠️ Loudness afviger fra Spotify's -14 LUFS target
-                        <button id="normalizeBtn" class="btn-small">Normaliser</button>
-                    </div>
-                    <div id="lufsOk" class="success hidden">
-                        ✅ Loudness er perfekt til streaming!
-                    </div>
-                </div>
+                <button class="path-btn" id="pathSocial">
+                    <span class="path-icon">📱</span>
+                    <span class="path-title">Til Facebook</span>
+                    <span class="path-desc">Video med cover + musik</span>
+                </button>
             </section>
 
-            <!-- Cover Prompt Generator -->
-            <section class="card" id="coverSection">
-                <h2>2. Generér Cover Prompt</h2>
-                <p class="hint">Lav en prompt til ChatGPT/DALL-E</p>
+            <!-- ===== AMUSE VEJ ===== -->
+            <section id="amusePath" class="path-content hidden">
+                <button class="back-btn" id="backFromAmuse">← Tilbage</button>
                 
-                <div class="form-row">
+                <div class="card">
+                    <h2>Amuse Tjekliste</h2>
+                    <div class="checklist">
+                        <label class="check-item"><input type="checkbox"> Audio (WAV/FLAC, 16-bit, 44.1kHz)</label>
+                        <label class="check-item"><input type="checkbox"> Cover (3000x3000 px, ingen logos)</label>
+                        <label class="check-item"><input type="checkbox"> Titel</label>
+                        <label class="check-item"><input type="checkbox"> Genre</label>
+                        <label class="check-item"><input type="checkbox"> Lyrics ja/nej</label>
+                        <label class="check-item"><input type="checkbox"> Explicit ja/nej</label>
+                    </div>
+                    <div class="ai-note">
+                        🤖 AI-musik kommer på Spotify, Apple, Tidal, Deezer — ikke Meta/YouTube
+                    </div>
+                    <a href="https://www.amuse.io" target="_blank" class="btn-primary">🚀 Gå til Amuse</a>
+                </div>
+                
+                <div class="card">
+                    <h2>🎨 Cover Prompt Generator</h2>
                     <div class="field">
-                        <label>Sang titel</label>
-                        <input type="text" id="songTitle" placeholder="Don't Trade with People">
+                        <label>Titel</label>
+                        <input type="text" id="promptTitle" placeholder="Don't Trade with People">
                     </div>
                     <div class="field">
                         <label>Genre</label>
-                        <input type="text" id="songGenre" placeholder="Funk, Bachata, Reggae...">
+                        <input type="text" id="promptGenre" placeholder="Funk, Reggae...">
+                    </div>
+                    <div class="field">
+                        <label>Stil</label>
+                        <select id="promptStyle">
+                            <option value="retro">Retro 70s/80s</option>
+                            <option value="abstract">Abstract</option>
+                            <option value="neon">Neon / Synthwave</option>
+                            <option value="minimal">Minimalistisk</option>
+                            <option value="tropical">Tropical</option>
+                            <option value="psychedelic">Psychedelic</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label>Detaljer (valgfrit)</label>
+                        <textarea id="promptExtra" rows="2" placeholder="En ørn, nordlys..."></textarea>
+                    </div>
+                    <button id="generatePrompt" class="btn-secondary">Generér Prompt</button>
+                    <div id="promptResult" class="prompt-result hidden">
+                        <textarea id="generatedPrompt" rows="5" readonly></textarea>
+                        <button id="copyPrompt" class="btn-small">📋 Kopiér</button>
                     </div>
                 </div>
-                
-                <div class="field">
-                    <label>Visuel stil</label>
-                    <select id="coverStyle">
-                        <option value="retro">Retro 70s/80s</option>
-                        <option value="abstract">Abstract / Moderne</option>
-                        <option value="neon">Neon / Synthwave</option>
-                        <option value="minimal">Minimalistisk</option>
-                        <option value="tropical">Tropical / Beach</option>
-                        <option value="urban">Urban / Street</option>
-                        <option value="psychedelic">Psychedelic</option>
-                        <option value="nature">Nature / Organic</option>
-                    </select>
-                </div>
-
-                <div class="field">
-                    <label>Ekstra detaljer (valgfrit)</label>
-                    <textarea id="extraDetails" rows="2" placeholder="F.eks: En ørn i vinterjakke, arktisk landskab, nordlys..."></textarea>
-                </div>
-                
-                <button id="generatePrompt" class="btn-primary">🎨 Generér Prompt</button>
-                
-                <div id="promptResult" class="prompt-result hidden">
-                    <textarea id="generatedPrompt" rows="6" readonly></textarea>
-                    <button id="copyPrompt" class="btn-secondary">📋 Kopiér</button>
-                </div>
             </section>
 
-            <!-- Amuse Checklist -->
-            <section class="card" id="checklistSection">
-                <h2>3. Amuse Tjekliste</h2>
-                <p class="hint">Har du alt klar?</p>
+            <!-- ===== FACEBOOK VEJ ===== -->
+            <section id="socialPath" class="path-content hidden">
+                <button class="back-btn" id="backFromSocial">← Tilbage</button>
                 
-                <div class="checklist">
-                    <label class="check-item">
-                        <input type="checkbox" id="checkAudio">
-                        <span>Audio fil (WAV/FLAC, min 16-bit, 44.1kHz)</span>
-                    </label>
-                    <label class="check-item">
-                        <input type="checkbox" id="checkCover">
-                        <span>Cover art (3000x3000 px, ingen logos)</span>
-                    </label>
-                    <label class="check-item">
-                        <input type="checkbox" id="checkTitle">
-                        <span>Titel på sangen</span>
-                    </label>
-                    <label class="check-item">
-                        <input type="checkbox" id="checkGenre">
-                        <span>Genre (vælges i Amuse dropdown)</span>
-                    </label>
-                    <label class="check-item">
-                        <input type="checkbox" id="checkLyrics">
-                        <span>Ved om der er lyrics (ja/nej)</span>
-                    </label>
-                    <label class="check-item">
-                        <input type="checkbox" id="checkExplicit">
-                        <span>Ved om explicit content (ja/nej)</span>
-                    </label>
-                </div>
-
-                <div class="ai-info">
-                    <h4>🤖 AI-musik på Amuse</h4>
-                    <p><strong>✅ Kommer på:</strong> Spotify, Apple Music, Tidal, Deezer, Amazon</p>
-                    <p><strong>❌ Ekskluderet:</strong> Meta (FB/IG), YouTube Content ID</p>
-                </div>
-
-                <a href="https://www.amuse.io" target="_blank" class="btn-primary btn-large">
-                    🚀 Gå til Amuse
-                </a>
-            </section>
-
-            <!-- Social Media Video -->
-            <section class="card" id="socialSection">
-                <h2>4. Social Media Video</h2>
-                <p class="hint">Kombiner cover + lyd til video for FB/Insta</p>
-                
-                <div class="dropzone dropzone-small" id="coverDropzone">
-                    <span class="icon">🖼️</span>
-                    <span>Drop cover art her</span>
-                    <input type="file" id="coverInput" accept="image/*" hidden>
-                </div>
-                
-                <div id="coverPreview" class="cover-preview hidden">
-                    <img id="previewImg" src="" alt="Cover">
-                    <span class="check">✅</span>
-                </div>
-
-                <div class="video-buttons">
-                    <button id="createReels" class="btn-video" disabled>
-                        <span class="btn-icon">📱</span>
-                        <span class="btn-label">Reels / Stories</span>
-                        <span class="btn-desc">30 sek video</span>
-                    </button>
+                <div class="card">
+                    <h2>📱 Video til Facebook</h2>
+                    <p class="hint">Cover + musik → video</p>
                     
-                    <button id="createFeed" class="btn-video" disabled>
-                        <span class="btn-icon">📰</span>
-                        <span class="btn-label">Feed Post</span>
-                        <span class="btn-desc">Hele sangen</span>
-                    </button>
-                </div>
-                
-                <div id="videoProgress" class="progress hidden">
-                    <div class="progress-bar" id="progressBar"></div>
-                    <span id="progressText">0%</span>
+                    <div class="upload-row">
+                        <div class="upload-box" id="coverBox">
+                            <div class="dropzone-mini" id="coverDrop">
+                                <span>🖼️</span>
+                                <span>Cover</span>
+                            </div>
+                            <input type="file" id="coverInput" accept="image/*" hidden>
+                        </div>
+                        
+                        <div class="upload-box" id="audioBox">
+                            <div class="dropzone-mini" id="audioDrop">
+                                <span>🎵</span>
+                                <span>Musik</span>
+                            </div>
+                            <input type="file" id="audioInput" accept="audio/*" hidden>
+                        </div>
+                    </div>
+                    
+                    <div class="duration-row">
+                        <span>Længde:</span>
+                        <label><input type="radio" name="dur" value="30" checked> 30s</label>
+                        <label><input type="radio" name="dur" value="60"> 60s</label>
+                        <label><input type="radio" name="dur" value="full"> Fuld</label>
+                    </div>
+
+                    <button id="makeVideo" class="btn-primary" disabled>🎬 Lav Video</button>
+                    
+                    <div id="progress" class="progress hidden">
+                        <div class="bar" id="bar"></div>
+                    </div>
                 </div>
             </section>
         </main>
 
-        <footer>
-            <p>SunoShip Lite v4.0 • Rasta-Jah 🎶</p>
-        </footer>
+        <footer>SunoShip v4.1</footer>
     </div>
 
     <div id="toast" class="toast hidden"></div>
-
     <script src="app.js"></script>
 </body>
 </html>
