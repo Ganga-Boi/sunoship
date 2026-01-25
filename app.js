@@ -97,8 +97,8 @@ async function handleFile(file) {
         // Auto-check audio in checklist
         if ($('checkAudio')) $('checkAudio').checked = true;
         
-        // Enable video button if cover is also loaded
-        updateVideoButton();
+        // Enable video buttons if cover is also loaded
+        updateVideoButtons();
         
         toast('Analyse færdig!');
         
@@ -330,7 +330,8 @@ function initVideoCreator() {
         if (e.dataTransfer.files[0]) handleCoverFile(e.dataTransfer.files[0]);
     });
 
-    $('createVideo')?.addEventListener('click', createSocialVideo);
+    $('createReels')?.addEventListener('click', () => createSocialVideo(30, 'reels'));
+    $('createFeed')?.addEventListener('click', () => createSocialVideo('full', 'feed'));
 }
 
 function handleCoverFile(file) {
@@ -350,8 +351,8 @@ function handleCoverFile(file) {
         preview?.classList.remove('hidden');
         $('coverDropzone')?.classList.add('hidden');
         
-        // Enable video button if audio is also loaded
-        updateVideoButton();
+        // Enable video buttons if audio is also loaded
+        updateVideoButtons();
         
         // Check in checklist
         if ($('checkCover')) $('checkCover').checked = true;
@@ -361,38 +362,40 @@ function handleCoverFile(file) {
     reader.readAsDataURL(file);
 }
 
-function updateVideoButton() {
-    const btn = $('createVideo');
-    if (btn) {
-        btn.disabled = !(state.file && coverImageData);
-    }
+function updateVideoButtons() {
+    const ready = state.file && coverImageData;
+    const reelsBtn = $('createReels');
+    const feedBtn = $('createFeed');
+    if (reelsBtn) reelsBtn.disabled = !ready;
+    if (feedBtn) feedBtn.disabled = !ready;
 }
 
-async function createSocialVideo() {
+async function createSocialVideo(duration, type) {
     if (!state.file || !coverImageData) {
         toast('Upload både lyd og cover først', 'error');
         return;
     }
 
-    const btn = $('createVideo');
+    const reelsBtn = $('createReels');
+    const feedBtn = $('createFeed');
     const progress = $('videoProgress');
     const progressBar = $('progressBar');
     const progressText = $('progressText');
     
-    btn.disabled = true;
-    btn.textContent = '⏳ Opretter video...';
+    // Disable both buttons
+    if (reelsBtn) reelsBtn.disabled = true;
+    if (feedBtn) feedBtn.disabled = true;
     progress?.classList.remove('hidden');
 
     try {
-        // Get duration setting
-        const durationSetting = $('videoDuration')?.value || '30';
+        // Get duration
         const audioDuration = state.audioBuffer?.duration || 30;
         let targetDuration;
         
-        if (durationSetting === 'full') {
+        if (duration === 'full') {
             targetDuration = audioDuration;
         } else {
-            targetDuration = Math.min(parseInt(durationSetting), audioDuration);
+            targetDuration = Math.min(duration, audioDuration);
         }
 
         // Create canvas
@@ -456,18 +459,17 @@ async function createSocialVideo() {
             const a = document.createElement('a');
             a.href = url;
             const title = $('songTitle')?.value || 'song';
-            a.download = `${title}_social.webm`;
+            a.download = `${title}_${type}.webm`;
             a.click();
             
             URL.revokeObjectURL(url);
             URL.revokeObjectURL(audio.src);
             
             // Reset UI
-            btn.disabled = false;
-            btn.textContent = '🎬 Lav Video til Social Media';
+            updateVideoButtons();
             progress?.classList.add('hidden');
             
-            toast('Video klar! 🎬');
+            toast(`${type === 'reels' ? 'Reels' : 'Feed'} video klar! 🎬`);
         };
 
         // Start recording
@@ -496,8 +498,7 @@ async function createSocialVideo() {
     } catch (err) {
         console.error('Video creation error:', err);
         toast('Fejl ved oprettelse af video', 'error');
-        btn.disabled = false;
-        btn.textContent = '🎬 Lav Video til Social Media';
+        updateVideoButtons();
         progress?.classList.add('hidden');
     }
 }
