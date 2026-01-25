@@ -1,4 +1,4 @@
-/* SunoShip v4.1 */
+/* SunoShip v4.2 */
 'use strict';
 
 const $ = id => document.getElementById(id);
@@ -149,28 +149,42 @@ async function makeVideo() {
             ...dest.stream.getAudioTracks()
         ]);
 
+        // Try MP4 first, fallback to WebM
+        let mimeType = 'video/mp4';
+        let fileExt = 'mp4';
+        
+        if (!MediaRecorder.isTypeSupported('video/mp4')) {
+            mimeType = 'video/webm';
+            fileExt = 'webm';
+        }
+
         // Record
         const chunks = [];
         const rec = new MediaRecorder(combined, {
-            mimeType: 'video/webm',
-            videoBitsPerSecond: 2500000
+            mimeType: mimeType,
+            videoBitsPerSecond: 4000000
         });
         
         rec.ondataavailable = e => chunks.push(e.data);
         
         rec.onstop = () => {
-            const blob = new Blob(chunks, {type: 'video/webm'});
+            const blob = new Blob(chunks, {type: mimeType});
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'video_til_facebook.webm';
+            a.download = `facebook_video.${fileExt}`;
             a.click();
             
             btn.disabled = false;
             btn.textContent = '🎬 Lav Video';
             prog.classList.add('hidden');
             bar.style.width = '0%';
-            toast('Video klar! 🎬');
+            
+            if (fileExt === 'webm') {
+                toast('Video klar! Konverter til MP4 på cloudconvert.com for FB', 'warning');
+            } else {
+                toast('Video klar! 🎬');
+            }
         };
 
         // Start
