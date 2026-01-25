@@ -280,6 +280,17 @@ input:focus, textarea:focus, select:focus {
     transition: width 0.2s;
 }
 
+.convert-hint {
+    margin-top: 16px;
+    font-size: 0.85rem;
+    color: #8b949e;
+    text-align: center;
+}
+
+.convert-hint a {
+    color: #1DB954;
+}
+
 /* Toast */
 .toast {
     position: fixed;
@@ -294,6 +305,7 @@ input:focus, textarea:focus, select:focus {
 }
 
 .toast.error { background: #f85149; color: #fff; }
+.toast.warning { background: #d29922; color: #000; }
 .toast.hidden { opacity: 0; pointer-events: none; }
 
 .hidden { display: none !important; }
