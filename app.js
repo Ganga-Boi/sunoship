@@ -1,4 +1,4 @@
-/* SunoShip v5.0 */
+/* SunoShip v5.1 */
 'use strict';
 
 const $ = id => document.getElementById(id);
@@ -153,10 +153,10 @@ async function makeVideo() {
 
         statusText.textContent = 'Opretter video...';
 
-        const fps = 5;  // 5 fps is enough for static image
+        const fps = 5;
         const totalFrames = Math.ceil(targetDur * fps);
         
-        // Video-only muxer (simpler, more reliable)
+        // Video-only muxer
         const mp4 = new muxer.Muxer({
             target: new muxer.ArrayBufferTarget(),
             video: {
@@ -167,13 +167,18 @@ async function makeVideo() {
             fastStart: 'in-memory'
         });
 
+        let framesEncoded = 0;
+        
         const videoEncoder = new VideoEncoder({
-            output: (chunk, meta) => mp4.addVideoChunk(chunk, meta),
+            output: (chunk, meta) => {
+                mp4.addVideoChunk(chunk, meta);
+                framesEncoded++;
+            },
             error: e => { throw new Error('Video fejl: ' + e.message); }
         });
 
         await videoEncoder.configure({
-            codec: 'avc1.640028',  // Level 4.0 supports 1080x1080
+            codec: 'avc1.640028',
             width: 1080,
             height: 1080,
             bitrate: 2_000_000,
@@ -190,7 +195,8 @@ async function makeVideo() {
             frame.close();
             
             if (i % fps === 0) {
-                statusText.textContent = `${Math.round((i/totalFrames)*100)}%`;
+                statusText.textContent = `Video: ${Math.round((i/totalFrames)*100)}%`;
+                await new Promise(r => setTimeout(r, 0)); // Let UI update
             }
         }
 
@@ -200,25 +206,29 @@ async function makeVideo() {
         statusText.textContent = 'Gemmer...';
         mp4.finalize();
 
+        console.log('Frames encoded:', framesEncoded);
+        console.log('Buffer size:', mp4.target.buffer.byteLength);
+
+        if (mp4.target.buffer.byteLength < 1000) {
+            throw new Error('Video er tom - encoding fejlede');
+        }
+
         // Download video
         const mp4Blob = new Blob([mp4.target.buffer], { type: 'video/mp4' });
+        console.log('MP4 blob size:', mp4Blob.size);
+        
         const videoUrl = URL.createObjectURL(mp4Blob);
         const a = document.createElement('a');
         a.href = videoUrl;
         a.download = 'facebook_video.mp4';
+        document.body.appendChild(a);
         a.click();
+        document.body.removeChild(a);
         URL.revokeObjectURL(videoUrl);
-        
-        // Also download audio separately
-        const audioUrl = URL.createObjectURL(audioFile);
-        const a2 = document.createElement('a');
-        a2.href = audioUrl;
-        a2.download = 'musik.' + (audioFile.name.split('.').pop() || 'mp3');
-        setTimeout(() => a2.click(), 500);
         
         statusBox.classList.add('hidden');
         btn.disabled = false;
-        toast('Video + musik downloadet! Kombiner på FB');
+        toast('MP4 video downloadet! 🎬');
 
     } catch (err) {
         console.error('Fejl:', err);
