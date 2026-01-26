@@ -1,4 +1,4 @@
-/* SunoShip v5.1 */
+/* SunoShip v5.2 */
 'use strict';
 
 const $ = id => document.getElementById(id);
@@ -151,12 +151,18 @@ async function makeVideo() {
         });
         ctx.drawImage(img, 0, 0, 1080, 1080);
 
+        // Decode audio
+        statusText.textContent = 'Decoder lyd...';
+        const audioCtx = new OfflineAudioContext(2, Math.ceil(targetDur * 48000), 48000);
+        const arrayBuffer = await audioFile.arrayBuffer();
+        const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+
         statusText.textContent = 'Opretter video...';
 
-        const fps = 5;
+        const fps = 10;
         const totalFrames = Math.ceil(targetDur * fps);
         
-        // Video-only muxer
+        // Create muxer with video AND audio
         const mp4 = new muxer.Muxer({
             target: new muxer.ArrayBufferTarget(),
             video: {
@@ -164,17 +170,18 @@ async function makeVideo() {
                 width: 1080,
                 height: 1080
             },
+            audio: {
+                codec: 'aac',
+                numberOfChannels: 2,
+                sampleRate: 48000
+            },
             fastStart: 'in-memory'
         });
 
-        let framesEncoded = 0;
-        
+        // VIDEO ENCODING
         const videoEncoder = new VideoEncoder({
-            output: (chunk, meta) => {
-                mp4.addVideoChunk(chunk, meta);
-                framesEncoded++;
-            },
-            error: e => { throw new Error('Video fejl: ' + e.message); }
+            output: (chunk, meta) => mp4.addVideoChunk(chunk, meta),
+            error: e => console.error('Video error:', e)
         });
 
         await videoEncoder.configure({
@@ -185,50 +192,109 @@ async function makeVideo() {
             framerate: fps
         });
 
-        // Encode frames
         for (let i = 0; i < totalFrames; i++) {
             const frame = new VideoFrame(canvas, {
                 timestamp: (i / fps) * 1_000_000
             });
-            
-            videoEncoder.encode(frame, { keyFrame: i % (fps * 2) === 0 });
+            videoEncoder.encode(frame, { keyFrame: i % 30 === 0 });
             frame.close();
             
-            if (i % fps === 0) {
+            if (i % 10 === 0) {
                 statusText.textContent = `Video: ${Math.round((i/totalFrames)*100)}%`;
-                await new Promise(r => setTimeout(r, 0)); // Let UI update
+                await new Promise(r => setTimeout(r, 0));
             }
         }
 
         await videoEncoder.flush();
         videoEncoder.close();
 
+        // AUDIO ENCODING
+        statusText.textContent = 'Encoder lyd...';
+        
+        const audioEncoder = new AudioEncoder({
+            output: (chunk, meta) => mp4.addAudioChunk(chunk, meta),
+            error: e => console.error('Audio error:', e)
+        });
+
+        await audioEncoder.configure({
+            codec: 'mp4a.40.2',
+            numberOfChannels: 2,
+            sampleRate: 48000,
+            bitrate: 128000
+        });
+
+        // Get audio data
+        const sampleRate = audioBuffer.sampleRate;
+        const numSamples = Math.min(Math.floor(targetDur * sampleRate), audioBuffer.length);
+        
+        const left = audioBuffer.getChannelData(0);
+        const right = audioBuffer.numberOfChannels > 1 ? audioBuffer.getChannelData(1) : left;
+
+        // Resample to 48kHz if needed and encode in chunks
+        const chunkSize = 1024;
+        const ratio = 48000 / sampleRate;
+        const totalOutputSamples = Math.floor(numSamples * ratio);
+        
+        for (let i = 0; i < totalOutputSamples; i += chunkSize) {
+            const frames = Math.min(chunkSize, totalOutputSamples - i);
+            const leftData = new Float32Array(frames);
+            const rightData = new Float32Array(frames);
+            
+            for (let j = 0; j < frames; j++) {
+                const srcIdx = Math.floor((i + j) / ratio);
+                leftData[j] = left[srcIdx] || 0;
+                rightData[j] = right[srcIdx] || 0;
+            }
+            
+            // Combine into planar format
+            const combined = new Float32Array(frames * 2);
+            combined.set(leftData, 0);
+            combined.set(rightData, frames);
+            
+            const audioData = new AudioData({
+                format: 'f32-planar',
+                sampleRate: 48000,
+                numberOfFrames: frames,
+                numberOfChannels: 2,
+                timestamp: Math.floor((i / 48000) * 1_000_000),
+                data: combined
+            });
+            
+            audioEncoder.encode(audioData);
+            audioData.close();
+            
+            if (i % 48000 === 0) {
+                statusText.textContent = `Lyd: ${Math.round((i/totalOutputSamples)*100)}%`;
+                await new Promise(r => setTimeout(r, 0));
+            }
+        }
+
+        await audioEncoder.flush();
+        audioEncoder.close();
+
+        // Finalize
         statusText.textContent = 'Gemmer...';
         mp4.finalize();
 
-        console.log('Frames encoded:', framesEncoded);
-        console.log('Buffer size:', mp4.target.buffer.byteLength);
-
-        if (mp4.target.buffer.byteLength < 1000) {
-            throw new Error('Video er tom - encoding fejlede');
+        const mp4Blob = new Blob([mp4.target.buffer], { type: 'video/mp4' });
+        console.log('MP4 size:', mp4Blob.size);
+        
+        if (mp4Blob.size < 10000) {
+            throw new Error('Video er for lille - noget gik galt');
         }
 
-        // Download video
-        const mp4Blob = new Blob([mp4.target.buffer], { type: 'video/mp4' });
-        console.log('MP4 blob size:', mp4Blob.size);
-        
-        const videoUrl = URL.createObjectURL(mp4Blob);
+        const url = URL.createObjectURL(mp4Blob);
         const a = document.createElement('a');
-        a.href = videoUrl;
+        a.href = url;
         a.download = 'facebook_video.mp4';
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        URL.revokeObjectURL(videoUrl);
+        URL.revokeObjectURL(url);
         
         statusBox.classList.add('hidden');
         btn.disabled = false;
-        toast('MP4 video downloadet! 🎬');
+        toast('MP4 med lyd klar! 🎬');
 
     } catch (err) {
         console.error('Fejl:', err);
