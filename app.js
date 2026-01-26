@@ -1,4 +1,4 @@
-/* SunoShip v4.2 */
+/* SunoShip v4.4 */
 'use strict';
 
 const $ = id => document.getElementById(id);
@@ -108,25 +108,22 @@ async function makeVideo() {
     if (!coverData || !audioFile) return;
     
     const btn = $('makeVideo');
-    const prog = $('progress');
-    const bar = $('bar');
+    const statusBox = $('statusBox');
+    const statusText = $('statusText');
     
     btn.disabled = true;
-    btn.textContent = '⏳ Arbejder...';
-    prog.classList.remove('hidden');
+    statusBox.classList.remove('hidden');
+    statusText.textContent = 'Opretter video...';
 
-    // Get duration
     const durVal = document.querySelector('input[name="dur"]:checked').value;
     const targetDur = durVal === 'full' ? audioDuration : Math.min(+durVal, audioDuration);
 
     try {
-        // Canvas setup
         const canvas = document.createElement('canvas');
         canvas.width = 1080;
         canvas.height = 1080;
         const ctx = canvas.getContext('2d');
-
-        // Load image
+        
         const img = new Image();
         await new Promise((res, rej) => {
             img.onload = res;
@@ -134,73 +131,113 @@ async function makeVideo() {
             img.src = coverData;
         });
         ctx.drawImage(img, 0, 0, 1080, 1080);
-
-        // Audio setup
+        
+        const stream = canvas.captureStream(30);
+        
+        // Add audio
         const audioEl = new Audio(URL.createObjectURL(audioFile));
         const audioCtx = new AudioContext();
         const source = audioCtx.createMediaElementSource(audioEl);
         const dest = audioCtx.createMediaStreamDestination();
         source.connect(dest);
-
-        // Combine streams
-        const canvasStream = canvas.captureStream(30);
+        
         const combined = new MediaStream([
-            ...canvasStream.getVideoTracks(),
+            ...stream.getVideoTracks(),
             ...dest.stream.getAudioTracks()
         ]);
-
-        // Try MP4 first, fallback to WebM
-        let mimeType = 'video/mp4';
-        let fileExt = 'mp4';
         
-        if (!MediaRecorder.isTypeSupported('video/mp4')) {
-            mimeType = 'video/webm';
-            fileExt = 'webm';
-        }
-
-        // Record
         const chunks = [];
-        const rec = new MediaRecorder(combined, {
-            mimeType: mimeType,
-            videoBitsPerSecond: 4000000
+        const rec = new MediaRecorder(combined, { 
+            mimeType: 'video/webm',
+            videoBitsPerSecond: 5000000 
         });
         
         rec.ondataavailable = e => chunks.push(e.data);
         
-        rec.onstop = () => {
-            const blob = new Blob(chunks, {type: mimeType});
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `facebook_video.${fileExt}`;
-            a.click();
+        rec.onstop = async () => {
+            const webmBlob = new Blob(chunks, { type: 'video/webm' });
             
+            // Convert to MP4 using ffmpeg.wasm
+            statusText.textContent = 'Konverterer til MP4...';
+            
+            try {
+                const { FFmpeg } = FFmpegWASM;
+                const { fetchFile } = FFmpegUtil;
+                
+                const ffmpeg = new FFmpeg();
+                
+                ffmpeg.on('progress', ({ progress }) => {
+                    statusText.textContent = `Konverterer... ${Math.round(progress * 100)}%`;
+                });
+                
+                statusText.textContent = 'Loader konverter...';
+                await ffmpeg.load({
+                    coreURL: 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js'
+                });
+                
+                statusText.textContent = 'Konverterer til MP4...';
+                
+                const webmData = new Uint8Array(await webmBlob.arrayBuffer());
+                await ffmpeg.writeFile('input.webm', webmData);
+                
+                await ffmpeg.exec([
+                    '-i', 'input.webm',
+                    '-c:v', 'libx264',
+                    '-preset', 'fast',
+                    '-c:a', 'aac',
+                    '-b:a', '128k',
+                    '-movflags', '+faststart',
+                    'output.mp4'
+                ]);
+                
+                const mp4Data = await ffmpeg.readFile('output.mp4');
+                const mp4Blob = new Blob([mp4Data], { type: 'video/mp4' });
+                
+                const url = URL.createObjectURL(mp4Blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'facebook_video.mp4';
+                a.click();
+                URL.revokeObjectURL(url);
+                
+                toast('MP4 klar til Facebook! 🎬');
+                
+            } catch (convErr) {
+                console.error('FFmpeg fejl:', convErr);
+                
+                // Fallback - download WebM
+                const url = URL.createObjectURL(webmBlob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'video.webm';
+                a.click();
+                URL.revokeObjectURL(url);
+                
+                window.open('https://cloudconvert.com/webm-to-mp4', '_blank');
+                toast('Konvertering fejlede - brug cloudconvert', 'error');
+            }
+            
+            statusBox.classList.add('hidden');
             btn.disabled = false;
-            btn.textContent = '🎬 Lav Video';
-            prog.classList.add('hidden');
-            bar.style.width = '0%';
-            
-            if (fileExt === 'webm') {
-                toast('Video klar! Konverter til MP4 på cloudconvert.com for FB', 'warning');
-            } else {
-                toast('Video klar! 🎬');
+        };
+        
+        rec.onerror = () => {
+            throw new Error('Recording failed');
+        };
+        
+        // Progress updates
+        const updateStatus = () => {
+            if (audioEl.currentTime < targetDur && rec.state === 'recording') {
+                const pct = Math.round((audioEl.currentTime / targetDur) * 100);
+                statusText.textContent = `Optager... ${pct}%`;
+                requestAnimationFrame(updateStatus);
             }
         };
-
-        // Start
+        
         rec.start();
         audioEl.play();
-
-        // Progress
-        const update = () => {
-            if (audioEl.currentTime < targetDur) {
-                bar.style.width = (audioEl.currentTime / targetDur * 100) + '%';
-                requestAnimationFrame(update);
-            }
-        };
-        update();
-
-        // Stop after duration
+        updateStatus();
+        
         setTimeout(() => {
             audioEl.pause();
             rec.stop();
@@ -210,9 +247,8 @@ async function makeVideo() {
     } catch (err) {
         console.error(err);
         toast('Fejl - prøv igen', 'error');
+        statusBox.classList.add('hidden');
         btn.disabled = false;
-        btn.textContent = '🎬 Lav Video';
-        prog.classList.add('hidden');
     }
 }
 
