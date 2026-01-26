@@ -1,4 +1,4 @@
-/* SunoShip v4.4 */
+/* SunoShip v4.6 */
 'use strict';
 
 const $ = id => document.getElementById(id);
@@ -7,6 +7,14 @@ const $ = id => document.getElementById(id);
 let coverData = null;
 let audioFile = null;
 let audioDuration = 0;
+let Mp4Muxer = null;
+
+// Load mp4-muxer dynamically
+async function loadMuxer() {
+    if (Mp4Muxer) return Mp4Muxer;
+    Mp4Muxer = await import('https://cdn.jsdelivr.net/npm/mp4-muxer@5.1.3/+esm');
+    return Mp4Muxer;
+}
 
 // Init
 document.addEventListener('DOMContentLoaded', () => {
@@ -113,11 +121,180 @@ async function makeVideo() {
     
     btn.disabled = true;
     statusBox.classList.remove('hidden');
-    statusText.textContent = 'Opretter video...';
+    statusText.textContent = 'Checker browser...';
 
     const durVal = document.querySelector('input[name="dur"]:checked').value;
     const targetDur = durVal === 'full' ? audioDuration : Math.min(+durVal, audioDuration);
 
+    // Check for WebCodecs support
+    if (typeof VideoEncoder === 'undefined') {
+        statusText.textContent = 'Browser understøtter ikke MP4 - bruger WebM...';
+        await fallbackWebM(targetDur, btn, statusBox, statusText);
+        return;
+    }
+
+    try {
+        statusText.textContent = 'Loader encoder...';
+        const muxer = await loadMuxer();
+
+        statusText.textContent = 'Forbereder billede...';
+        
+        // Setup canvas
+        const canvas = document.createElement('canvas');
+        canvas.width = 1080;
+        canvas.height = 1080;
+        const ctx = canvas.getContext('2d');
+        
+        const img = new Image();
+        await new Promise((res, rej) => {
+            img.onload = res;
+            img.onerror = rej;
+            img.src = coverData;
+        });
+        ctx.drawImage(img, 0, 0, 1080, 1080);
+
+        statusText.textContent = 'Opretter MP4...';
+
+        const fps = 30;
+        const totalFrames = Math.ceil(targetDur * fps);
+        
+        // Create muxer
+        const mp4 = new muxer.Muxer({
+            target: new muxer.ArrayBufferTarget(),
+            video: {
+                codec: 'avc',
+                width: 1080,
+                height: 1080
+            },
+            audio: {
+                codec: 'aac',
+                numberOfChannels: 2,
+                sampleRate: 48000
+            },
+            fastStart: 'in-memory'
+        });
+
+        // Video encoder
+        const videoEncoder = new VideoEncoder({
+            output: (chunk, meta) => mp4.addVideoChunk(chunk, meta),
+            error: e => console.error('Video error:', e)
+        });
+
+        await videoEncoder.configure({
+            codec: 'avc1.42001f',
+            width: 1080,
+            height: 1080,
+            bitrate: 4_000_000,
+            framerate: fps
+        });
+
+        // Encode video frames
+        for (let i = 0; i < totalFrames; i++) {
+            const frame = new VideoFrame(canvas, {
+                timestamp: (i / fps) * 1_000_000
+            });
+            
+            videoEncoder.encode(frame, { keyFrame: i % 30 === 0 });
+            frame.close();
+            
+            if (i % 30 === 0) {
+                statusText.textContent = `Video: ${Math.round(i/totalFrames*100)}%`;
+                await new Promise(r => setTimeout(r, 0));
+            }
+        }
+
+        await videoEncoder.flush();
+        videoEncoder.close();
+
+        // Audio encoding
+        statusText.textContent = 'Tilføjer lyd...';
+        
+        const audioCtx = new AudioContext({ sampleRate: 48000 });
+        const arrayBuffer = await audioFile.arrayBuffer();
+        const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+        
+        const audioEncoder = new AudioEncoder({
+            output: (chunk, meta) => mp4.addAudioChunk(chunk, meta),
+            error: e => console.error('Audio error:', e)
+        });
+
+        await audioEncoder.configure({
+            codec: 'mp4a.40.2',
+            numberOfChannels: 2,
+            sampleRate: 48000,
+            bitrate: 128000
+        });
+
+        const numSamples = Math.min(
+            Math.floor(targetDur * 48000),
+            audioBuffer.length
+        );
+        
+        const leftChannel = audioBuffer.getChannelData(0);
+        const rightChannel = audioBuffer.numberOfChannels > 1 
+            ? audioBuffer.getChannelData(1) 
+            : leftChannel;
+
+        const samplesPerChunk = 1024;
+        for (let i = 0; i < numSamples; i += samplesPerChunk) {
+            const chunkSize = Math.min(samplesPerChunk, numSamples - i);
+            
+            // Planar format - left channel then right channel
+            const leftData = new Float32Array(chunkSize);
+            const rightData = new Float32Array(chunkSize);
+            
+            for (let j = 0; j < chunkSize; j++) {
+                leftData[j] = leftChannel[i + j] || 0;
+                rightData[j] = rightChannel[i + j] || 0;
+            }
+            
+            const audioData = new AudioData({
+                format: 'f32-planar',
+                sampleRate: 48000,
+                numberOfFrames: chunkSize,
+                numberOfChannels: 2,
+                timestamp: (i / 48000) * 1_000_000,
+                data: new Float32Array([...leftData, ...rightData])
+            });
+            
+            audioEncoder.encode(audioData);
+            audioData.close();
+            
+            if (i % 48000 === 0) {
+                statusText.textContent = `Lyd: ${Math.round(i/numSamples*100)}%`;
+                await new Promise(r => setTimeout(r, 0));
+            }
+        }
+
+        await audioEncoder.flush();
+        audioEncoder.close();
+        await audioCtx.close();
+
+        // Finalize
+        statusText.textContent = 'Gemmer fil...';
+        mp4.finalize();
+
+        const mp4Blob = new Blob([mp4.target.buffer], { type: 'video/mp4' });
+        
+        const url = URL.createObjectURL(mp4Blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'facebook_video.mp4';
+        a.click();
+        URL.revokeObjectURL(url);
+        
+        statusBox.classList.add('hidden');
+        btn.disabled = false;
+        toast('MP4 klar til Facebook! 🎬');
+
+    } catch (err) {
+        console.error('MP4 fejl:', err);
+        statusText.textContent = 'MP4 fejlede - bruger WebM...';
+        await fallbackWebM(targetDur, btn, statusBox, statusText);
+    }
+}
+
+async function fallbackWebM(targetDur, btn, statusBox, statusText) {
     try {
         const canvas = document.createElement('canvas');
         canvas.width = 1080;
@@ -134,7 +311,6 @@ async function makeVideo() {
         
         const stream = canvas.captureStream(30);
         
-        // Add audio
         const audioEl = new Audio(URL.createObjectURL(audioFile));
         const audioCtx = new AudioContext();
         const source = audioCtx.createMediaElementSource(audioEl);
@@ -154,82 +330,27 @@ async function makeVideo() {
         
         rec.ondataavailable = e => chunks.push(e.data);
         
-        rec.onstop = async () => {
-            const webmBlob = new Blob(chunks, { type: 'video/webm' });
+        rec.onstop = () => {
+            const blob = new Blob(chunks, { type: 'video/webm' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'video_til_facebook.webm';
+            a.click();
+            URL.revokeObjectURL(url);
             
-            // Convert to MP4 using ffmpeg.wasm
-            statusText.textContent = 'Konverterer til MP4...';
-            
-            try {
-                const { FFmpeg } = FFmpegWASM;
-                const { fetchFile } = FFmpegUtil;
-                
-                const ffmpeg = new FFmpeg();
-                
-                ffmpeg.on('progress', ({ progress }) => {
-                    statusText.textContent = `Konverterer... ${Math.round(progress * 100)}%`;
-                });
-                
-                statusText.textContent = 'Loader konverter...';
-                await ffmpeg.load({
-                    coreURL: 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js'
-                });
-                
-                statusText.textContent = 'Konverterer til MP4...';
-                
-                const webmData = new Uint8Array(await webmBlob.arrayBuffer());
-                await ffmpeg.writeFile('input.webm', webmData);
-                
-                await ffmpeg.exec([
-                    '-i', 'input.webm',
-                    '-c:v', 'libx264',
-                    '-preset', 'fast',
-                    '-c:a', 'aac',
-                    '-b:a', '128k',
-                    '-movflags', '+faststart',
-                    'output.mp4'
-                ]);
-                
-                const mp4Data = await ffmpeg.readFile('output.mp4');
-                const mp4Blob = new Blob([mp4Data], { type: 'video/mp4' });
-                
-                const url = URL.createObjectURL(mp4Blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'facebook_video.mp4';
-                a.click();
-                URL.revokeObjectURL(url);
-                
-                toast('MP4 klar til Facebook! 🎬');
-                
-            } catch (convErr) {
-                console.error('FFmpeg fejl:', convErr);
-                
-                // Fallback - download WebM
-                const url = URL.createObjectURL(webmBlob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'video.webm';
-                a.click();
-                URL.revokeObjectURL(url);
-                
+            setTimeout(() => {
                 window.open('https://cloudconvert.com/webm-to-mp4', '_blank');
-                toast('Konvertering fejlede - brug cloudconvert', 'error');
-            }
+            }, 500);
             
             statusBox.classList.add('hidden');
             btn.disabled = false;
+            toast('WebM klar - konverter i nyt vindue');
         };
         
-        rec.onerror = () => {
-            throw new Error('Recording failed');
-        };
-        
-        // Progress updates
         const updateStatus = () => {
             if (audioEl.currentTime < targetDur && rec.state === 'recording') {
-                const pct = Math.round((audioEl.currentTime / targetDur) * 100);
-                statusText.textContent = `Optager... ${pct}%`;
+                statusText.textContent = `Optager... ${Math.round((audioEl.currentTime / targetDur) * 100)}%`;
                 requestAnimationFrame(updateStatus);
             }
         };
