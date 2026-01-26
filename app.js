@@ -1,4 +1,4 @@
-/* SunoShip v4.8 */
+/* SunoShip v4.9 */
 'use strict';
 
 const $ = id => document.getElementById(id);
@@ -121,24 +121,22 @@ async function makeVideo() {
     
     btn.disabled = true;
     statusBox.classList.remove('hidden');
-    statusText.textContent = 'Checker browser...';
 
     const durVal = document.querySelector('input[name="dur"]:checked').value;
     const targetDur = durVal === 'full' ? audioDuration : Math.min(+durVal, audioDuration);
 
     // Check for WebCodecs support
     if (typeof VideoEncoder === 'undefined') {
-        statusText.textContent = 'Browser understøtter ikke MP4...';
-        await fallbackWebM(targetDur, btn, statusBox, statusText);
+        toast('Din browser understøtter ikke video encoding', 'error');
+        statusBox.classList.add('hidden');
+        btn.disabled = false;
         return;
     }
 
     try {
-        statusText.textContent = 'Loader encoder...';
+        statusText.textContent = 'Loader...';
         const muxer = await loadMuxer();
 
-        statusText.textContent = 'Forbereder billede...';
-        
         // Setup canvas
         const canvas = document.createElement('canvas');
         canvas.width = 1080;
@@ -153,23 +151,12 @@ async function makeVideo() {
         });
         ctx.drawImage(img, 0, 0, 1080, 1080);
 
-        // Decode audio first
-        statusText.textContent = 'Decoder lyd...';
-        const audioCtx = new AudioContext({ sampleRate: 48000 });
-        const arrayBuffer = await audioFile.arrayBuffer();
-        const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-        
-        const numSamples = Math.min(
-            Math.floor(targetDur * 48000),
-            audioBuffer.length
-        );
+        statusText.textContent = 'Opretter video...';
 
-        statusText.textContent = 'Opretter MP4...';
-
-        const fps = 1;
+        const fps = 5;  // 5 fps is enough for static image
         const totalFrames = Math.ceil(targetDur * fps);
         
-        // Create muxer with both video and audio
+        // Video-only muxer (simpler, more reliable)
         const mp4 = new muxer.Muxer({
             target: new muxer.ArrayBufferTarget(),
             video: {
@@ -177,133 +164,67 @@ async function makeVideo() {
                 width: 1080,
                 height: 1080
             },
-            audio: {
-                codec: 'aac',
-                numberOfChannels: 2,
-                sampleRate: 48000
-            },
             fastStart: 'in-memory'
         });
 
-        // Video encoder
         const videoEncoder = new VideoEncoder({
             output: (chunk, meta) => mp4.addVideoChunk(chunk, meta),
-            error: e => { throw new Error('Video encoding fejl: ' + e.message); }
+            error: e => { throw new Error('Video fejl: ' + e.message); }
         });
 
         await videoEncoder.configure({
             codec: 'avc1.42001f',
             width: 1080,
             height: 1080,
-            bitrate: 1_000_000,
+            bitrate: 2_000_000,
             framerate: fps
         });
 
-        // Encode video frames
+        // Encode frames
         for (let i = 0; i < totalFrames; i++) {
             const frame = new VideoFrame(canvas, {
                 timestamp: (i / fps) * 1_000_000
             });
             
-            videoEncoder.encode(frame, { keyFrame: true });
+            videoEncoder.encode(frame, { keyFrame: i % (fps * 2) === 0 });
             frame.close();
             
-            statusText.textContent = `Video: ${Math.round((i+1)/totalFrames*100)}%`;
+            if (i % fps === 0) {
+                statusText.textContent = `${Math.round((i/totalFrames)*100)}%`;
+            }
         }
 
         await videoEncoder.flush();
         videoEncoder.close();
 
-        // Audio encoder
-        statusText.textContent = 'Encoder lyd...';
-        
-        const audioEncoder = new AudioEncoder({
-            output: (chunk, meta) => mp4.addAudioChunk(chunk, meta),
-            error: e => { throw new Error('Audio encoding fejl: ' + e.message); }
-        });
-
-        // Check if AAC is supported
-        const aacSupport = await AudioEncoder.isConfigSupported({
-            codec: 'mp4a.40.2',
-            numberOfChannels: 2,
-            sampleRate: 48000,
-            bitrate: 128000
-        });
-
-        if (!aacSupport.supported) {
-            throw new Error('AAC audio ikke understøttet');
-        }
-
-        await audioEncoder.configure({
-            codec: 'mp4a.40.2',
-            numberOfChannels: 2,
-            sampleRate: 48000,
-            bitrate: 128000
-        });
-
-        const leftChannel = audioBuffer.getChannelData(0);
-        const rightChannel = audioBuffer.numberOfChannels > 1 
-            ? audioBuffer.getChannelData(1) 
-            : leftChannel;
-
-        const samplesPerChunk = 1024;
-        for (let i = 0; i < numSamples; i += samplesPerChunk) {
-            const chunkSize = Math.min(samplesPerChunk, numSamples - i);
-            
-            const leftData = new Float32Array(chunkSize);
-            const rightData = new Float32Array(chunkSize);
-            
-            for (let j = 0; j < chunkSize; j++) {
-                leftData[j] = leftChannel[i + j] || 0;
-                rightData[j] = rightChannel[i + j] || 0;
-            }
-            
-            const audioData = new AudioData({
-                format: 'f32-planar',
-                sampleRate: 48000,
-                numberOfFrames: chunkSize,
-                numberOfChannels: 2,
-                timestamp: (i / 48000) * 1_000_000,
-                data: new Float32Array([...leftData, ...rightData])
-            });
-            
-            audioEncoder.encode(audioData);
-            audioData.close();
-            
-            if (i % (48000 * 2) === 0) {
-                statusText.textContent = `Lyd: ${Math.round(i/numSamples*100)}%`;
-            }
-        }
-
-        await audioEncoder.flush();
-        audioEncoder.close();
-        await audioCtx.close();
-
-        // Finalize
-        statusText.textContent = 'Gemmer fil...';
+        statusText.textContent = 'Gemmer...';
         mp4.finalize();
 
+        // Download video
         const mp4Blob = new Blob([mp4.target.buffer], { type: 'video/mp4' });
-        
-        const url = URL.createObjectURL(mp4Blob);
+        const videoUrl = URL.createObjectURL(mp4Blob);
         const a = document.createElement('a');
-        a.href = url;
+        a.href = videoUrl;
         a.download = 'facebook_video.mp4';
         a.click();
-        URL.revokeObjectURL(url);
+        URL.revokeObjectURL(videoUrl);
+        
+        // Also download audio separately
+        const audioUrl = URL.createObjectURL(audioFile);
+        const a2 = document.createElement('a');
+        a2.href = audioUrl;
+        a2.download = 'musik.' + (audioFile.name.split('.').pop() || 'mp3');
+        setTimeout(() => a2.click(), 500);
         
         statusBox.classList.add('hidden');
         btn.disabled = false;
-        toast('MP4 klar til Facebook! 🎬');
+        toast('Video + musik downloadet! Kombiner på FB');
 
     } catch (err) {
-        console.error('MP4 fejl:', err);
-        statusText.textContent = 'Fejl: ' + err.message;
-        
-        // Wait a moment to show error, then fallback
-        await new Promise(r => setTimeout(r, 1500));
-        statusText.textContent = 'Bruger alternativ metode...';
-        await fallbackWebM(targetDur, btn, statusBox, statusText);
+        console.error('Fejl:', err);
+        statusBox.classList.add('hidden');
+        btn.disabled = false;
+        toast('Fejl: ' + err.message, 'error');
     }
 }
 
