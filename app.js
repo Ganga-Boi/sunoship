@@ -1,4 +1,4 @@
-/* SunoShip v4.9 */
+/* SunoShip v5.0 */
 'use strict';
 
 const $ = id => document.getElementById(id);
@@ -173,7 +173,7 @@ async function makeVideo() {
         });
 
         await videoEncoder.configure({
-            codec: 'avc1.42001f',
+            codec: 'avc1.640028',  // Level 4.0 supports 1080x1080
             width: 1080,
             height: 1080,
             bitrate: 2_000_000,
